@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>3DOM - 3D Webpage Viewer</title>
+    <link rel="stylesheet" href="styles/viewer.css" />
+  </head>
+  <body>
+    <div id="viewer-container">
+      <div class="loading">Loading 3D view...</div>
+    </div>
+    <div class="crosshair"></div>
+    <div class="controls">
+      <p>Controls: WASD to move, Mouse to look around</p>
+      <p>Click on the screen to enable controls</p>
+    </div>
+    <div class="info-panel">
+      <h2>Element Info</h2>
+      <div id="element-details">Click on an element to see details</div>
+    </div>
+
+    <!-- Load Three.js library -->
+    <script src="lib/three.min.js"></script>
+    <script src="lib/PointerLockControls.js"></script>
+
+    <!-- Viewer script -->
+    <script src="scripts/viewer.js"></script>
+  </body>
+</html>
