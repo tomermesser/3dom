@@ -109,15 +109,80 @@ function extractElementData(element, depth) {
     element.onclick !== null ||
     computedStyle.cursor === "pointer";
 
-  // Extract text content if appropriate
+  // Extract text content if appropriate - filter out whitespace-only text
   let textContent = "";
-  if (
-    element.textContent &&
-    element.childNodes.length === 1 &&
-    element.childNodes[0].nodeType === Node.TEXT_NODE
-  ) {
+  if (element.textContent) {
     textContent = element.textContent.trim();
+
+    // Filter out technical-looking text that's not meaningful to users
+    textContent = cleanTextContent(textContent);
   }
+
+  // Filter out elements with technical utility classes only
+  const technicalClassPrefixes = [
+    "d-",
+    "position-",
+    "display-",
+    "flex-",
+    "float-",
+    "js-",
+    "wb-",
+    "rounded",
+    "shadow",
+    "p-",
+    "m-",
+    "text-",
+    "font-",
+    "bg-",
+    "container-",
+    "layout",
+    "grid-",
+    "col-",
+    "row-",
+    "fe",
+    "anim",
+  ];
+  const technicalClassRegexes = [
+    /^col-/,
+    /^row-/,
+    /^mt-/,
+    /^mb-/,
+    /^ml-/,
+    /^mr-/,
+    /^pt-/,
+    /^pb-/,
+    /^pl-/,
+    /^pr-/,
+    /^align-/,
+    /^justify-/,
+    /^w-/,
+    /^h-/,
+    /^border/,
+    /^rounded/,
+    /^position-/,
+    /^layout/,
+    /^main/,
+    /^wrapper/,
+    /^inner/,
+    /^outer/,
+    /^container/,
+    /^fe[A-Z]/, // SVG elements like feMerge, feGaussianBlur
+    /^svg/,
+    /^ui-/,
+    /^color-/,
+    /^size-/,
+    /^width-/,
+    /^height-/,
+  ];
+
+  // Functions to check if a class is technical
+  const isTechnicalClass = (className) => {
+    if (technicalClassPrefixes.some((prefix) => className.startsWith(prefix)))
+      return true;
+    if (technicalClassRegexes.some((regex) => regex.test(className)))
+      return true;
+    return false;
+  };
 
   // Extract image data if it's an image
   let imageData = null;
@@ -135,11 +200,24 @@ function extractElementData(element, depth) {
   const bgColor = computedStyle.backgroundColor;
   const textColor = computedStyle.color;
 
+  // Filter meaningful classes - remove technical/utility classes
+  const meaningfulClasses = Array.from(element.classList).filter(
+    (cls) => !isTechnicalClass(cls)
+  );
+
+  // Get parent ID for hierarchy tracking
+  const parentElement = element.parentElement;
+  const parentId = parentElement ? parentElement.id || null : null;
+
+  // Extract additional metadata for museum organization
+  const sectionData = extractSectionData(element);
+
   return {
     id: element.id || null,
     tagName: element.tagName,
     type: elementType,
-    classes: Array.from(element.classList),
+    classes: meaningfulClasses,
+    parentId: parentId,
     position: {
       x: rect.left + window.scrollX,
       y: rect.top + window.scrollY,
@@ -162,7 +240,51 @@ function extractElementData(element, depth) {
     textContent: textContent,
     imageData: imageData,
     href: element.href || null,
+    sectionData: sectionData,
   };
+}
+
+// Helper function to clean text content that contains technical gibberish
+function cleanTextContent(text) {
+  if (!text) return "";
+
+  // Skip technical-looking text entirely (common auto-generated IDs)
+  if (/^[a-zA-Z0-9_-]{5,}$/.test(text) && !text.match(/\s/)) {
+    return "";
+  }
+
+  // Remove anything that looks like a technical ID (common in minified code/CSS)
+  if (/^[a-zA-Z]{1,2}[0-9]{3,}$/.test(text)) {
+    return "";
+  }
+
+  // Remove technical SVG element names
+  if (/^fe[A-Z][a-zA-Z]*$/.test(text)) {
+    return "";
+  }
+
+  // Remove layout/container gibberish
+  if (
+    /^(container|layout|wrapper|inner|outer|main)(-|\s)?[a-zA-Z0-9]*$/.test(
+      text
+    ) &&
+    text.length < 20
+  ) {
+    return "";
+  }
+
+  // Remove typical technical class names that might appear as text
+  let cleaned = text.replace(/\b(js-|wb-|css-|svg-|anim-|ui-)\w+\b/g, "");
+
+  // Remove excessive whitespace
+  cleaned = cleaned.replace(/\s+/g, " ").trim();
+
+  // If after cleaning we're left with very short text (likely not meaningful)
+  if (cleaned.length < 3) {
+    return "";
+  }
+
+  return cleaned;
 }
 
 // Helper function to classify elements
@@ -248,3 +370,98 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // Initial message to background script that we're ready
 chrome.runtime.sendMessage({ action: "contentScriptReady" });
+
+// Extract section information to help with museum organization
+function extractSectionData(element) {
+  // Default section data
+  const sectionData = {
+    isSectionContainer: false,
+    sectionName: null,
+    sectionType: null,
+  };
+
+  // Check if this is likely a section container
+  const sectionTags = [
+    "SECTION",
+    "ARTICLE",
+    "MAIN",
+    "ASIDE",
+    "NAV",
+    "HEADER",
+    "FOOTER",
+  ];
+  if (sectionTags.includes(element.tagName)) {
+    sectionData.isSectionContainer = true;
+    sectionData.sectionType = element.tagName.toLowerCase();
+  }
+
+  // Check for common section class names
+  const sectionClassNames = [
+    "section",
+    "panel",
+    "container",
+    "article",
+    "card",
+    "page",
+    "module",
+    "gallery",
+    "feed",
+    "list",
+    "grid",
+    "hero",
+    "banner",
+    "feature",
+  ];
+
+  if (element.classList) {
+    // Check if any of the classes suggest this is a section
+    const matchingClasses = Array.from(element.classList).filter((cls) =>
+      sectionClassNames.some(
+        (sectionClass) =>
+          cls.includes(sectionClass) &&
+          !cls.startsWith("d-") &&
+          !cls.startsWith("p-")
+      )
+    );
+
+    if (matchingClasses.length > 0) {
+      sectionData.isSectionContainer = true;
+      sectionData.sectionName = matchingClasses[0];
+    }
+  }
+
+  // Check for section/article role attributes
+  if (
+    element.getAttribute("role") === "region" ||
+    element.getAttribute("role") === "article" ||
+    element.getAttribute("role") === "main"
+  ) {
+    sectionData.isSectionContainer = true;
+    sectionData.sectionType = element.getAttribute("role");
+  }
+
+  // If this has a heading element as its first child, it's likely a section
+  const firstHeading = element.querySelector("h1, h2, h3, h4, h5, h6");
+  if (
+    firstHeading &&
+    element.contains(firstHeading) &&
+    element.firstElementChild === firstHeading
+  ) {
+    sectionData.isSectionContainer = true;
+    sectionData.sectionName = firstHeading.textContent.trim();
+  }
+
+  // Large divs with an ID and sufficient content are often sections
+  if (
+    element.tagName === "DIV" &&
+    element.id &&
+    element.offsetWidth > 200 &&
+    element.offsetHeight > 200 &&
+    element.childElementCount > 3
+  ) {
+    sectionData.isSectionContainer = true;
+    sectionData.sectionName = element.id;
+  }
+
+  return sectionData;
+}
