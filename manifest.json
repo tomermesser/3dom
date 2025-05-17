@@ -11,7 +11,7 @@
     },
     "default_title": "3DOM - 3D View"
   },
-  "permissions": ["activeTab", "scripting", "storage"],
+  "permissions": ["activeTab", "scripting", "storage", "notifications"],
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
@@ -24,8 +24,17 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["viewer.html", "scripts/*", "styles/*", "lib/*"],
+      "resources": [
+        "viewer.html",
+        "scripts/*",
+        "styles/*",
+        "lib/*",
+        "images/*"
+      ],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
 }

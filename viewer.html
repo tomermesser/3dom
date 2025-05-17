@@ -4,11 +4,84 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>3DOM - 3D Webpage Viewer</title>
-    <link rel="stylesheet" href="styles/viewer.css" />
+    <link rel="stylesheet" href="/styles/viewer.css" />
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        font-family: Arial, sans-serif;
+      }
+      #viewer-container {
+        width: 100vw;
+        height: 100vh;
+        position: relative;
+      }
+      .loading {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        background-color: #121212;
+        color: white;
+        font-size: 24px;
+        z-index: 1000;
+      }
+      .loader {
+        border: 5px solid #f3f3f3;
+        border-top: 5px solid #3498db;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 1s linear infinite;
+        margin-bottom: 20px;
+      }
+      .loading-message {
+        margin-top: 20px;
+        font-size: 18px;
+      }
+      .loading-status {
+        margin-top: 10px;
+        font-size: 14px;
+        color: #aaa;
+      }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+      .instructions {
+        margin-top: 30px;
+        font-size: 14px;
+        color: #aaa;
+        max-width: 400px;
+        text-align: center;
+        line-height: 1.4;
+      }
+    </style>
   </head>
   <body>
     <div id="viewer-container">
-      <div class="loading">Loading 3D view...</div>
+      <div class="loading">
+        <div class="loader"></div>
+        <h2>3DOM Viewer</h2>
+        <div class="loading-message">Loading 3D environment...</div>
+        <div class="loading-status" id="loading-status">Preparing scene</div>
+        <div class="instructions">
+          Once loaded, click to activate controls.<br />
+          Use WASD to move, mouse to look around.<br />
+          Press SPACE to fly up, SHIFT to fly down.<br />
+          Use Ctrl+/- to adjust speed.
+        </div>
+      </div>
     </div>
     <div class="crosshair"></div>
     <div class="controls">
@@ -21,10 +94,17 @@
     </div>
 
     <!-- Load Three.js library -->
-    <script src="lib/three.min.js"></script>
-    <script src="lib/PointerLockControls.js"></script>
+    <script src="/lib/three.min.js"></script>
+    <script src="/lib/PointerLockControls.js"></script>
 
-    <!-- Viewer script -->
-    <script src="scripts/viewer.js"></script>
+    <!-- Viewer modular scripts -->
+    <script src="/scripts/viewer/utils.js"></script>
+    <script src="/scripts/viewer/images.js"></script>
+    <script src="/scripts/viewer/museum.js"></script>
+    <script src="/scripts/viewer/exhibits.js"></script>
+    <script src="/scripts/viewer/core.js"></script>
+
+    <!-- Fallback loader - moved to separate file to avoid inline script CSP issues -->
+    <script src="/scripts/viewer-fallback.js"></script>
   </body>
 </html>

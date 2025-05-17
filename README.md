@@ -48,6 +48,75 @@ To create your own icons, replace the placeholder images in the `images` directo
 - Improved performance for complex webpages
 - Enhanced visual effects and transitions
 
+## Image Handling Improvements
+
+To fix issues with images not appearing on museum walls:
+
+1. **Image Proxying**: The content script now converts external images to data URLs before sending to the 3D viewer
+
+   - Uses multiple approaches to handle CORS restrictions:
+     - Direct loading with crossOrigin="anonymous"
+     - Fallback to fetch API with blob URLs
+     - Final fallback to informative placeholders
+
+2. **Enhanced Image Display**:
+
+   - Better fallback displays that show the original image URL
+   - Improved placeholder graphics when images can't be loaded
+   - Proper handling of data URLs in the viewer
+
+3. **CORS Issue Resolution**:
+   - Images from external domains (like newspaper sites) now display correctly
+   - Maintains original image URLs for reference
+
+This allows the 3DOM extension to properly display images from sites like the New York Times without being blocked by CORS policies.
+
+## Storage Quota and Performance Optimizations
+
+To handle large webpages with many elements and images:
+
+1. **Message-based Data Transfer**: Switched from Chrome's storage API to direct message passing between background script and viewer
+
+   - Avoids the `QUOTA_BYTES` limit in Chrome storage
+   - Maintains the DOM data in memory rather than persisting it
+
+2. **Data Optimization Pipeline**:
+
+   - Automatically reduces DOM data size for large pages
+   - Prioritizes important elements (images, articles, larger visible elements)
+   - Limits the total number of elements to improve performance
+   - Truncates excessively long text content
+   - Optimizes image data by reducing resolution and compression quality
+
+3. **Progressive Loading**:
+   - Implements fallback mechanisms when data exceeds maximum message size
+   - Falls back to showing fewer elements rather than failing entirely
+
+These optimizations ensure the extension can handle complex modern websites without hitting Chrome's built-in quota limitations.
+
+## User Experience Improvements
+
+To enhance user experience with the 3DOM extension:
+
+1. **Improved Loading Experience**:
+
+   - Added a stylish loading indicator with progress updates
+   - Shows the current step being executed during initialization
+   - Provides clear instructions on how to use the controls
+
+2. **Better Image Handling**:
+
+   - Enhanced image proxying system with multiple fallback mechanisms
+   - More reliable loading of external images with proper error handling
+   - Improved placeholders that display the original image URLs
+   - Support for both data URLs and blob URLs depending on browser capabilities
+
+3. **Improved Error Handling**:
+   - Clearer error messages when something goes wrong
+   - More graceful fallbacks instead of failing completely
+
+These improvements create a more polished user experience with fewer blank walls in the museum and clearer visual feedback during loading.
+
 ## License
 
 MIT License
