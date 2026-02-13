@@ -66,6 +66,114 @@
         text-align: center;
         line-height: 1.4;
       }
+
+      /* Visibility Controls Panel */
+      .controls-panel {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        background-color: rgba(0, 0, 0, 0.85);
+        color: white;
+        padding: 10px;
+        border-radius: 8px;
+        font-family: Arial, sans-serif;
+        font-size: 13px;
+        z-index: 1001;
+        min-width: 220px;
+        max-width: 280px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+      }
+
+      .controls-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .controls-header h3 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: bold;
+      }
+
+      .toggle-btn {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 12px;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+      }
+
+      .toggle-btn:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+      }
+
+      .controls-content {
+        display: block;
+      }
+
+      .controls-content.collapsed {
+        display: none;
+      }
+
+      .controls-actions {
+        display: flex;
+        gap: 5px;
+        margin-bottom: 10px;
+      }
+
+      .action-btn {
+        flex: 1;
+        padding: 5px 8px;
+        background-color: rgba(255, 255, 255, 0.15);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 11px;
+        transition: background-color 0.2s;
+      }
+
+      .action-btn:hover {
+        background-color: rgba(255, 255, 255, 0.25);
+      }
+
+      .controls-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .control-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+      }
+
+      .control-item:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+      }
+
+      .control-item input[type="checkbox"] {
+        cursor: pointer;
+        width: 16px;
+        height: 16px;
+        margin: 0;
+      }
+
+      .control-item span {
+        user-select: none;
+      }
     </style>
   </head>
   <body>
@@ -105,5 +213,99 @@
 
     <!-- Fallback loader - moved to separate file to avoid inline script CSP issues -->
     <script src="/scripts/viewer-fallback.js"></script>
+
+    <!-- Visibility Controls Panel -->
+    <div id="visibility-controls" class="controls-panel">
+      <div class="controls-header">
+        <h3>Element Visibility</h3>
+        <button id="toggle-controls" class="toggle-btn" aria-label="Toggle controls">▼</button>
+      </div>
+      <div id="controls-content" class="controls-content">
+        <div class="controls-actions">
+          <button id="select-all-btn" class="action-btn">Select All</button>
+          <button id="deselect-all-btn" class="action-btn">Deselect All</button>
+        </div>
+        <div class="controls-list">
+          <label class="control-item">
+            <input type="checkbox" id="toggle-headers" checked>
+            <span>Headers (H1-H6)</span>
+          </label>
+          <label class="control-item">
+            <input type="checkbox" id="toggle-images" checked>
+            <span>Images</span>
+          </label>
+          <label class="control-item">
+            <input type="checkbox" id="toggle-text" checked>
+            <span>Text/Paragraphs</span>
+          </label>
+          <label class="control-item">
+            <input type="checkbox" id="toggle-links" checked>
+            <span>Links</span>
+          </label>
+          <label class="control-item">
+            <input type="checkbox" id="toggle-buttons" checked>
+            <span>Buttons</span>
+          </label>
+          <label class="control-item">
+            <input type="checkbox" id="toggle-forms" checked>
+            <span>Forms (inputs, selects, textareas)</span>
+          </label>
+          <label class="control-item">
+            <input type="checkbox" id="toggle-containers" checked>
+            <span>Containers/Divs</span>
+          </label>
+          <label class="control-item">
+            <input type="checkbox" id="toggle-navigation" checked>
+            <span>Navigation elements</span>
+          </label>
+          <label class="control-item">
+            <input type="checkbox" id="toggle-other" checked>
+            <span>Other elements</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <script>
+    // Visibility controls toggle functionality
+    document.addEventListener('DOMContentLoaded', () => {
+      const toggleBtn = document.getElementById('toggle-controls');
+      const controlsContent = document.getElementById('controls-content');
+      const controlsHeader = document.querySelector('.controls-header');
+
+      // Toggle collapse/expand
+      const toggleControls = () => {
+        controlsContent.classList.toggle('collapsed');
+        toggleBtn.textContent = controlsContent.classList.contains('collapsed') ? '▶' : '▼';
+      };
+
+      toggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleControls();
+      });
+
+      controlsHeader.addEventListener('click', (e) => {
+        if (e.target !== toggleBtn) {
+          toggleControls();
+        }
+      });
+
+      // Select All functionality
+      document.getElementById('select-all-btn').addEventListener('click', () => {
+        document.querySelectorAll('.control-item input[type="checkbox"]').forEach(checkbox => {
+          checkbox.checked = true;
+          checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+      });
+
+      // Deselect All functionality
+      document.getElementById('deselect-all-btn').addEventListener('click', () => {
+        document.querySelectorAll('.control-item input[type="checkbox"]').forEach(checkbox => {
+          checkbox.checked = false;
+          checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+      });
+    });
+    </script>
   </body>
 </html>
