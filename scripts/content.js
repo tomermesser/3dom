@@ -311,6 +311,7 @@ function extractElementData(element, depth) {
       width: rect.width,
       height: rect.height,
     },
+    zIndex: computedStyle.zIndex !== 'auto' ? parseInt(computedStyle.zIndex) : 0,
     styles: {
       backgroundColor: bgColor !== "rgba(0, 0, 0, 0)" ? bgColor : null,
       color: textColor,
