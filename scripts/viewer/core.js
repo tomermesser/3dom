@@ -115,6 +115,9 @@ function processReceivedData(domData) {
   // Add website info panel
   addWebsiteInfoPanel(domData);
 
+  // Setup visibility controls
+  setupVisibilityControls();
+
   // Remove loading screen
   updateLoadingStatus("Ready!");
   setTimeout(() => {
@@ -634,4 +637,101 @@ function clearHoverEffects() {
     });
     hoveredElement = null;
   }
+}
+
+// Visibility control management
+function setupVisibilityControls() {
+  // Wait for DOM to be ready
+  if (!document.getElementById('toggle-headers')) {
+    console.warn('3DOM Core: Visibility controls not found in DOM, retrying...');
+    setTimeout(setupVisibilityControls, 100);
+    return;
+  }
+
+  // Map checkbox IDs to element type filters
+  const controlMap = {
+    'toggle-headers': (el) => ['H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(el.tagName),
+    'toggle-images': (el) => el.tagName === 'IMG',
+    'toggle-text': (el) => {
+      if (['P', 'SPAN'].includes(el.tagName)) return true;
+      // DIV with text content (not containers)
+      if (el.tagName === 'DIV') {
+        const hasText = el.textContent && el.textContent.trim().length > 0;
+        const isContainer = el.classList && (
+          el.classList.contains('container') ||
+          el.classList.contains('wrapper') ||
+          el.classList.contains('section')
+        );
+        return hasText && !isContainer;
+      }
+      return false;
+    },
+    'toggle-links': (el) => el.tagName === 'A',
+    'toggle-buttons': (el) => el.tagName === 'BUTTON',
+    'toggle-forms': (el) => ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName),
+    'toggle-containers': (el) => {
+      if (['SECTION', 'ARTICLE'].includes(el.tagName)) return true;
+      // DIV containers (structural, not text)
+      if (el.tagName === 'DIV') {
+        const hasText = el.textContent && el.textContent.trim().length > 0;
+        const isContainer = !hasText || (el.classList && (
+          el.classList.contains('container') ||
+          el.classList.contains('wrapper') ||
+          el.classList.contains('section')
+        ));
+        return isContainer;
+      }
+      return false;
+    },
+    'toggle-navigation': (el) => {
+      if (el.tagName === 'NAV') return true;
+      if (el.classList && (
+        el.classList.contains('nav') ||
+        el.classList.contains('navigation') ||
+        el.classList.contains('navbar') ||
+        el.classList.contains('menu')
+      )) return true;
+      return false;
+    },
+    'toggle-other': (el) => {
+      // All other element types not covered above
+      const coveredTags = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'IMG', 'P', 'SPAN', 'A', 'BUTTON', 'INPUT', 'TEXTAREA', 'SELECT', 'DIV', 'SECTION', 'ARTICLE', 'NAV'];
+      return !coveredTags.includes(el.tagName);
+    }
+  };
+
+  // Add change listeners to all checkboxes
+  Object.keys(controlMap).forEach(checkboxId => {
+    const checkbox = document.getElementById(checkboxId);
+    if (checkbox) {
+      checkbox.addEventListener('change', (event) => {
+        updateElementVisibility(checkboxId, event.target.checked, controlMap[checkboxId]);
+      });
+    }
+  });
+
+  console.log('3DOM Core: Visibility controls initialized');
+}
+
+function updateElementVisibility(controlId, visible, filterFunction) {
+  if (!domElements || domElements.length === 0) {
+    console.warn('3DOM Core: No domElements to filter');
+    return;
+  }
+
+  let count = 0;
+
+  // Iterate through all 3D elements
+  domElements.forEach(element3D => {
+    // Get the original DOM element data
+    const domElement = element3D.userData?.domElement;
+
+    if (domElement && filterFunction(domElement)) {
+      // Set visibility on the 3D object
+      element3D.visible = visible;
+      count++;
+    }
+  });
+
+  console.log(`3DOM Core: ${visible ? 'Showed' : 'Hid'} ${count} elements for ${controlId}`);
 }
