@@ -4,18 +4,8 @@
  */
 
 // Main variables
-let scene, camera, renderer, controls;
+let scene, camera, renderer;
 let domElements = [];
-let moveForward = false;
-let moveBackward = false;
-let moveLeft = false;
-let moveRight = false;
-let moveUp = false;
-let moveDown = false;
-let velocity = new THREE.Vector3();
-let direction = new THREE.Vector3();
-let prevTime = performance.now();
-let movementSpeed = 100.0;
 
 // Initialize when DOM is loaded
 document.addEventListener("DOMContentLoaded", () => {
@@ -76,22 +66,23 @@ function processReceivedData(domData) {
   // Initialize scene first
   initScene();
 
-  updateLoadingStatus("Building museum environment...");
+  updateLoadingStatus("Building city environment...");
 
-  // Once scene is ready, update the entrance gate with website info
-  updateEntranceGate(domData);
+  // Initialize city (ground and districts)
+  initCityScene(domData);
 
-  updateLoadingStatus("Creating exhibits...");
-  // Create DOM elements
-  createDOMElements(domData);
+  updateLoadingStatus("Creating element shapes...");
+
+  // Create element shapes
+  domElements = createCityElements(domData);
 
   updateLoadingStatus("Setting up controls...");
-  // Set up animation and controls
-  animate();
-  setupControls();
 
-  // Display initial speed
-  updateSpeedDisplay();
+  // Set up animation
+  animate();
+
+  // Display zoom level
+  updateZoomDisplay(camera.position.y);
 
   // Add website info panel
   addWebsiteInfoPanel(domData);
@@ -99,7 +90,8 @@ function processReceivedData(domData) {
   // Remove loading screen
   updateLoadingStatus("Ready!");
   setTimeout(() => {
-    document.querySelector(".loading").style.display = "none";
+    const loadingEl = document.querySelector(".loading");
+    if (loadingEl) loadingEl.style.display = "none";
   }, 500);
 }
 
@@ -115,287 +107,158 @@ function updateLoadingStatus(message, isError = false) {
   }
 }
 
-// Function to update speed display
-function updateSpeedDisplay() {
-  // Create or update speed display
-  let speedDisplay = document.getElementById("speed-display");
-  if (!speedDisplay) {
-    speedDisplay = document.createElement("div");
-    speedDisplay.id = "speed-display";
-    speedDisplay.style.position = "fixed";
-    speedDisplay.style.bottom = "10px";
-    speedDisplay.style.right = "10px";
-    speedDisplay.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-    speedDisplay.style.color = "white";
-    speedDisplay.style.padding = "5px 10px";
-    speedDisplay.style.borderRadius = "5px";
-    speedDisplay.style.fontFamily = "Arial, sans-serif";
-    speedDisplay.style.zIndex = "1000";
-    document.body.appendChild(speedDisplay);
-  }
-
-  speedDisplay.textContent = `Speed: ${movementSpeed.toFixed(1)}`;
-}
 
 // Initialize the 3D scene
 function initScene() {
   // Create scene
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x121212);
-  scene.fog = new THREE.Fog(0x121212, 50, 1000);
+  scene.background = new THREE.Color(0x1a1a1a); // Darker background for city view
+  scene.fog = null; // Remove fog for top-down view
 
-  // Create camera with adjusted near plane to reduce clipping
-  camera = new THREE.PerspectiveCamera(
-    75,
-    window.innerWidth / window.innerHeight,
-    0.5,
-    2000
+  // Calculate camera bounds based on typical webpage
+  const aspect = window.innerWidth / window.innerHeight;
+  const viewSize = 100; // Adjust this to control zoom level
+
+  // Create orthographic camera for top-down view
+  camera = new THREE.OrthographicCamera(
+    -viewSize * aspect, // left
+    viewSize * aspect,  // right
+    viewSize,           // top
+    -viewSize,          // bottom
+    0.1,                // near
+    1000                // far
   );
-  camera.position.set(0, 5, 50);
+
+  // Position camera directly above the scene
+  camera.position.set(0, 100, 0);
+  camera.lookAt(0, 0, 0);
+  camera.up.set(0, 0, -1); // Set up vector for top-down view
 
   // Create renderer with optimized settings
   renderer = new THREE.WebGLRenderer({
     antialias: false,
-    precision: "mediump",
-    powerPreference: "high-performance",
+    precision: 'mediump',
+    powerPreference: 'high-performance',
   });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.BasicShadowMap;
-  document.getElementById("viewer-container").appendChild(renderer.domElement);
+  renderer.shadowMap.enabled = false; // Disabled for performance
+  document.getElementById('viewer-container').appendChild(renderer.domElement);
 
-  // Create controls
-  controls = new THREE.PointerLockControls(camera, document.body);
+  // Create pan/zoom controls
+  setupPanZoomControls();
 
-  // Add basic lighting - simplified for performance
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+  // Add lighting for top-down view
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
   scene.add(ambientLight);
 
-  // Use a single directional light for better performance
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
   directionalLight.position.set(0, 100, 0);
-  directionalLight.castShadow = true;
-  directionalLight.shadow.mapSize.width = 1024;
-  directionalLight.shadow.mapSize.height = 1024;
-  directionalLight.shadow.camera.far = 500;
   scene.add(directionalLight);
 
-  // Add a ground plane
-  const groundGeometry = new THREE.PlaneGeometry(5000, 5000);
-  const groundMaterial = new THREE.MeshStandardMaterial({
-    color: 0x333333,
-    roughness: 0.8,
-    metalness: 0.2,
-  });
-  const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-  ground.rotation.x = -Math.PI / 2;
-  ground.position.y = -0.5;
-  ground.receiveShadow = true;
-  scene.add(ground);
-
-  // Add website entrance gate
-  createEntranceGate();
-
   // Handle window resize
-  window.addEventListener("resize", () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
+  window.addEventListener('resize', () => {
+    const aspect = window.innerWidth / window.innerHeight;
+    camera.left = -viewSize * aspect;
+    camera.right = viewSize * aspect;
+    camera.top = viewSize;
+    camera.bottom = -viewSize;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 }
 
+// Set up pan/zoom controls for top-down view
+function setupPanZoomControls() {
+  const canvas = renderer.domElement;
+  let isDragging = false;
+  let previousMousePosition = { x: 0, y: 0 };
+  let cameraTarget = { x: 0, z: 0 };
+
+  // Mouse down - start dragging
+  canvas.addEventListener('mousedown', (event) => {
+    isDragging = true;
+    previousMousePosition = {
+      x: event.clientX,
+      y: event.clientY
+    };
+  });
+
+  // Mouse move - pan camera
+  canvas.addEventListener('mousemove', (event) => {
+    if (!isDragging) return;
+
+    const deltaX = event.clientX - previousMousePosition.x;
+    const deltaY = event.clientY - previousMousePosition.y;
+
+    // Pan speed based on camera height
+    const panSpeed = 0.1;
+    cameraTarget.x -= deltaX * panSpeed;
+    cameraTarget.z += deltaY * panSpeed;
+
+    // Update camera position
+    camera.position.x = cameraTarget.x;
+    camera.position.z = cameraTarget.z;
+
+    previousMousePosition = {
+      x: event.clientX,
+      y: event.clientY
+    };
+  });
+
+  // Mouse up - stop dragging
+  window.addEventListener('mouseup', () => {
+    isDragging = false;
+  });
+
+  // Mouse wheel - zoom
+  canvas.addEventListener('wheel', (event) => {
+    event.preventDefault();
+
+    // Zoom by adjusting camera height
+    const zoomSpeed = 5;
+    const delta = event.deltaY > 0 ? zoomSpeed : -zoomSpeed;
+
+    // Clamp camera height between min and max
+    const newHeight = Math.max(20, Math.min(200, camera.position.y + delta));
+    camera.position.y = newHeight;
+
+    // Update zoom level display
+    updateZoomDisplay(newHeight);
+  });
+
+  // Initialize camera target
+  cameraTarget.x = camera.position.x;
+  cameraTarget.z = camera.position.z;
+}
+
+// Update zoom level display
+function updateZoomDisplay(height) {
+  let zoomDisplay = document.getElementById('zoom-display');
+  if (!zoomDisplay) {
+    zoomDisplay = document.createElement('div');
+    zoomDisplay.id = 'zoom-display';
+    zoomDisplay.style.position = 'fixed';
+    zoomDisplay.style.bottom = '10px';
+    zoomDisplay.style.right = '10px';
+    zoomDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+    zoomDisplay.style.color = 'white';
+    zoomDisplay.style.padding = '5px 10px';
+    zoomDisplay.style.borderRadius = '5px';
+    zoomDisplay.style.fontFamily = 'Arial, sans-serif';
+    zoomDisplay.style.zIndex = '1000';
+    zoomDisplay.style.fontSize = '12px';
+    document.body.appendChild(zoomDisplay);
+  }
+
+  const zoomPercent = Math.round((200 - height) / 180 * 100);
+  zoomDisplay.textContent = `Zoom: ${zoomPercent}%`;
+}
+
 // Animation loop
 function animate() {
   requestAnimationFrame(animate);
-
-  if (controls.isLocked) {
-    const time = performance.now();
-    const delta = (time - prevTime) / 1000;
-
-    // Apply drag to slow down
-    velocity.x -= velocity.x * 10.0 * delta;
-    velocity.z -= velocity.z * 10.0 * delta;
-    velocity.y -= velocity.y * 10.0 * delta;
-
-    // Set direction based on controls
-    direction.z = Number(moveForward) - Number(moveBackward);
-    direction.x = Number(moveRight) - Number(moveLeft);
-    direction.normalize();
-
-    // Move in the correct direction
-    if (moveForward || moveBackward)
-      velocity.z -= direction.z * movementSpeed * delta;
-    if (moveLeft || moveRight)
-      velocity.x -= direction.x * movementSpeed * delta;
-
-    // Handle flying controls
-    if (moveUp) {
-      velocity.y += movementSpeed * delta * 2;
-    }
-    if (moveDown) {
-      velocity.y -= movementSpeed * delta * 2;
-    }
-
-    // Update controls for horizontal movement
-    controls.moveRight(-velocity.x * delta);
-    controls.moveForward(-velocity.z * delta);
-
-    // Update camera position for vertical movement
-    camera.position.y += velocity.y * delta;
-
-    // Apply level of detail management
-    updateLevelOfDetail();
-
-    prevTime = time;
-  }
-
   renderer.render(scene, camera);
-}
-
-// Function to update level of detail for objects based on distance from camera
-function updateLevelOfDetail() {
-  // Get camera position
-  const cameraPosition = camera.position.clone();
-
-  // Define LOD thresholds
-  const NEAR_THRESHOLD = 20;
-  const MID_THRESHOLD = 50;
-  const FAR_THRESHOLD = 100;
-
-  // Check each DOM element in the scene
-  for (let i = 0; i < domElements.length; i++) {
-    const element = domElements[i];
-    if (!element || !element.object) continue;
-
-    // Calculate distance to camera
-    const distance = cameraPosition.distanceTo(element.object.position);
-
-    // Apply LOD based on distance
-    if (distance < NEAR_THRESHOLD) {
-      // Near objects - full detail
-      if (element.detailLevel !== "high") {
-        element.detailLevel = "high";
-        if (element.highDetailParts) {
-          element.highDetailParts.forEach((part) => {
-            if (part) part.visible = true;
-          });
-        }
-      }
-    } else if (distance < MID_THRESHOLD) {
-      // Medium distance - medium detail
-      if (element.detailLevel !== "medium") {
-        element.detailLevel = "medium";
-        if (element.highDetailParts) {
-          element.highDetailParts.forEach((part) => {
-            if (part) part.visible = false;
-          });
-        }
-      }
-    } else if (distance < FAR_THRESHOLD) {
-      // Far objects - low detail but still visible
-      if (element.detailLevel !== "low") {
-        element.detailLevel = "low";
-      }
-    } else {
-      // Very far objects - may be culled entirely
-      if (element.object.visible) {
-        element.object.visible = false;
-      }
-    }
-  }
-}
-
-// Set up controls and event listeners
-function setupControls() {
-  // Pointer lock event listeners
-  const element = document.body;
-
-  element.addEventListener("click", () => {
-    controls.lock();
-  });
-
-  controls.addEventListener("lock", () => {
-    console.log("Controls locked");
-  });
-
-  controls.addEventListener("unlock", () => {
-    console.log("Controls unlocked");
-  });
-
-  // Keyboard controls
-  const onKeyDown = function (event) {
-    switch (event.code) {
-      case "KeyW":
-      case "ArrowUp":
-        moveForward = true;
-        break;
-      case "KeyA":
-      case "ArrowLeft":
-        moveLeft = true;
-        break;
-      case "KeyS":
-      case "ArrowDown":
-        moveBackward = true;
-        break;
-      case "KeyD":
-      case "ArrowRight":
-        moveRight = true;
-        break;
-      case "Space": // Space to fly up
-        moveUp = true;
-        break;
-      case "ShiftLeft": // Shift to fly down
-      case "ShiftRight":
-        moveDown = true;
-        break;
-      case "Equal": // Plus key
-        if (event.ctrlKey) {
-          event.preventDefault();
-          movementSpeed += 5.0;
-          updateSpeedDisplay();
-        }
-        break;
-      case "Minus": // Minus key
-        if (event.ctrlKey) {
-          event.preventDefault();
-          movementSpeed = Math.max(5.0, movementSpeed - 5.0);
-          updateSpeedDisplay();
-        }
-        break;
-    }
-  };
-
-  const onKeyUp = function (event) {
-    switch (event.code) {
-      case "KeyW":
-      case "ArrowUp":
-        moveForward = false;
-        break;
-      case "KeyA":
-      case "ArrowLeft":
-        moveLeft = false;
-        break;
-      case "KeyS":
-      case "ArrowDown":
-        moveBackward = false;
-        break;
-      case "KeyD":
-      case "ArrowRight":
-        moveRight = false;
-        break;
-      case "Space":
-        moveUp = false;
-        break;
-      case "ShiftLeft":
-      case "ShiftRight":
-        moveDown = false;
-        break;
-    }
-  };
-
-  document.addEventListener("keydown", onKeyDown);
-  document.addEventListener("keyup", onKeyUp);
 }
 
 // Add website info panel
@@ -423,10 +286,9 @@ function addWebsiteInfoPanel(domData) {
     <p style="margin: 0 0 5px 0;">${domData.pageMetrics.url || ""}</p>
     <p style="margin: 0;">Elements: ${domData.elements.length}</p>
     <p style="margin: 5px 0 0 0; font-size: 10px;">
-      WASD: Move horizontally<br>
-      Space: Fly up, Shift: Fly down<br>
-      Mouse: Look around<br>
-      Ctrl+/-: Adjust speed
+      Click + Drag: Pan view<br>
+      Mouse Wheel: Zoom in/out<br>
+      Click element: View details
     </p>
   `;
 
