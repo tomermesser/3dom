@@ -287,6 +287,9 @@
     <!-- Fallback loader - moved to separate file to avoid inline script CSP issues -->
     <script src="/scripts/viewer-fallback.js"></script>
 
+    <!-- Visibility controls script - external file to comply with CSP -->
+    <script src="/scripts/viewer/visibility-controls.js"></script>
+
     <!-- Visibility Controls Panel -->
     <div id="visibility-controls" class="controls-panel">
       <div class="controls-header">
@@ -338,42 +341,5 @@
         </div>
       </div>
     </div>
-
-    <script>
-    // Visibility controls toggle functionality
-    document.addEventListener('DOMContentLoaded', () => {
-      const toggleBtn = document.getElementById('toggle-controls');
-      const controlsContent = document.getElementById('controls-content');
-
-      // Toggle collapse/expand with proper ARIA state management
-      const toggleControls = () => {
-        const isCollapsed = controlsContent.classList.toggle('collapsed');
-        toggleBtn.textContent = isCollapsed ? '▶' : '▼';
-        toggleBtn.setAttribute('aria-expanded', !isCollapsed);
-      };
-
-      // Only handle clicks on the toggle button to avoid keyboard navigation conflict
-      toggleBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        toggleControls();
-      });
-
-      // Select All functionality
-      document.getElementById('select-all-btn').addEventListener('click', () => {
-        document.querySelectorAll('.control-item input[type="checkbox"]').forEach(checkbox => {
-          checkbox.checked = true;
-          checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-        });
-      });
-
-      // Deselect All functionality
-      document.getElementById('deselect-all-btn').addEventListener('click', () => {
-        document.querySelectorAll('.control-item input[type="checkbox"]').forEach(checkbox => {
-          checkbox.checked = false;
-          checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-        });
-      });
-    });
-    </script>
   </body>
 </html>

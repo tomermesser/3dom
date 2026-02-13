@@ -151,6 +151,7 @@ function initScene() {
 
   // Create scene
   scene = new THREE.Scene();
+  window.scene = scene; // Expose globally for city.js and elements.js
   scene.background = new THREE.Color(0x1a1a1a); // Darker background for city view
   scene.fog = null; // Remove fog for top-down view
 
