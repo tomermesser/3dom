@@ -5,6 +5,11 @@
 
 // Create ground plane based on page dimensions
 function createGroundPlane(pageMetrics) {
+  if (!pageMetrics || typeof pageMetrics.width !== 'number' || typeof pageMetrics.height !== 'number') {
+    console.error('3DOM City: Invalid pageMetrics', pageMetrics);
+    return { ground: null, scale: 1 };
+  }
+
   const { width, height } = pageMetrics;
 
   // Scale to reasonable 3D space (make it fit nicely in view)
@@ -88,15 +93,26 @@ function createDistricts(elements, pageMetrics, scale) {
 function initCityScene(domData) {
   console.log('3DOM City: Initializing city scene...');
 
+  // Validate scene is initialized
+  if (!window.scene || typeof window.scene.add !== 'function') {
+    console.error('3DOM City: Scene not initialized. Make sure core.js is loaded first.');
+    return;
+  }
+
   const { ground, scale } = createGroundPlane(domData.pageMetrics);
+  if (!ground) {
+    console.error('3DOM City: Failed to create ground plane');
+    return;
+  }
   scene.add(ground);
 
   const districts = createDistricts(domData.elements, domData.pageMetrics, scale);
   scene.add(districts);
 
   // Store scale for use in element creation
-  window.cityScale = scale;
-  window.pageMetrics = domData.pageMetrics;
+  window.cityData = window.cityData || {};
+  window.cityData.scale = scale;
+  window.cityData.pageMetrics = domData.pageMetrics;
 
   console.log('3DOM City: Ground and districts created, scale:', scale);
 }
