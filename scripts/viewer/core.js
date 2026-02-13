@@ -19,6 +19,7 @@ let mouse = new THREE.Vector2();
 let hoveredElement = null;
 let clickHandlerInitialized = false;
 let focusedInput = null;
+let visibilityControlsInitialized = false;
 
 // Camera height constants
 const MIN_CAMERA_HEIGHT = 20;
@@ -639,12 +640,38 @@ function clearHoverEffects() {
   }
 }
 
+// Helper function to classify DIV elements
+function classifyDIV(el) {
+  const hasText = el.textContent && el.textContent.trim().length > 0;
+  const hasContainerClass = el.classList && (
+    el.classList.contains('container') ||
+    el.classList.contains('wrapper') ||
+    el.classList.contains('section')
+  );
+
+  return {
+    isTextDiv: hasText && !hasContainerClass,
+    isContainerDiv: !hasText || hasContainerClass
+  };
+}
+
 // Visibility control management
-function setupVisibilityControls() {
+function setupVisibilityControls(retryCount = 0) {
+  const MAX_RETRIES = 50; // 5 seconds max
+
+  // Prevent duplicate initialization
+  if (visibilityControlsInitialized) {
+    console.warn('3DOM Core: Visibility controls already initialized');
+    return;
+  }
   // Wait for DOM to be ready
   if (!document.getElementById('toggle-headers')) {
-    console.warn('3DOM Core: Visibility controls not found in DOM, retrying...');
-    setTimeout(setupVisibilityControls, 100);
+    if (retryCount >= MAX_RETRIES) {
+      console.error('3DOM Core: Visibility controls not found after maximum retries');
+      return;
+    }
+    console.warn(`3DOM Core: Visibility controls not found, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
+    setTimeout(() => setupVisibilityControls(retryCount + 1), 100);
     return;
   }
 
@@ -653,35 +680,19 @@ function setupVisibilityControls() {
     'toggle-headers': (el) => ['H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(el.tagName),
     'toggle-images': (el) => el.tagName === 'IMG',
     'toggle-text': (el) => {
-      if (['P', 'SPAN'].includes(el.tagName)) return true;
-      // DIV with text content (not containers)
       if (el.tagName === 'DIV') {
-        const hasText = el.textContent && el.textContent.trim().length > 0;
-        const isContainer = el.classList && (
-          el.classList.contains('container') ||
-          el.classList.contains('wrapper') ||
-          el.classList.contains('section')
-        );
-        return hasText && !isContainer;
+        return classifyDIV(el).isTextDiv;
       }
-      return false;
+      return ['P', 'SPAN'].includes(el.tagName);
     },
     'toggle-links': (el) => el.tagName === 'A',
     'toggle-buttons': (el) => el.tagName === 'BUTTON',
     'toggle-forms': (el) => ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName),
     'toggle-containers': (el) => {
-      if (['SECTION', 'ARTICLE'].includes(el.tagName)) return true;
-      // DIV containers (structural, not text)
       if (el.tagName === 'DIV') {
-        const hasText = el.textContent && el.textContent.trim().length > 0;
-        const isContainer = !hasText || (el.classList && (
-          el.classList.contains('container') ||
-          el.classList.contains('wrapper') ||
-          el.classList.contains('section')
-        ));
-        return isContainer;
+        return classifyDIV(el).isContainerDiv;
       }
-      return false;
+      return ['SECTION', 'ARTICLE'].includes(el.tagName);
     },
     'toggle-navigation': (el) => {
       if (el.tagName === 'NAV') return true;
@@ -710,6 +721,7 @@ function setupVisibilityControls() {
     }
   });
 
+  visibilityControlsInitialized = true;
   console.log('3DOM Core: Visibility controls initialized');
 }
 
@@ -726,10 +738,16 @@ function updateElementVisibility(controlId, visible, filterFunction) {
     // Get the original DOM element data
     const domElement = element3D.userData?.domElement;
 
-    if (domElement && filterFunction(domElement)) {
-      // Set visibility on the 3D object
-      element3D.visible = visible;
-      count++;
+    if (domElement) {
+      try {
+        if (filterFunction(domElement)) {
+          // Set visibility on the 3D object
+          element3D.visible = visible;
+          count++;
+        }
+      } catch (error) {
+        console.warn('3DOM Core: Error filtering element', error);
+      }
     }
   });
 
