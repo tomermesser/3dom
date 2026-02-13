@@ -375,13 +375,16 @@ function setupClickHandler() {
     // Update raycaster
     raycaster.setFromCamera(mouse, camera);
 
-    // Check intersections with domElements
+    // Check intersections with domElements (filter out invalid objects)
     if (domElements && domElements.length > 0) {
-      const intersects = raycaster.intersectObjects(domElements, true);
+      const validElements = domElements.filter(el => el && el.geometry && el.material && el.visible);
+      if (validElements.length > 0) {
+        const intersects = raycaster.intersectObjects(validElements, true);
 
-      if (intersects.length > 0) {
-        const clickedObject = intersects[0].object;
-        handleElementClick(clickedObject);
+        if (intersects.length > 0) {
+          const clickedObject = intersects[0].object;
+          handleElementClick(clickedObject);
+        }
       }
     }
   });
@@ -394,15 +397,18 @@ function setupClickHandler() {
     raycaster.setFromCamera(mouse, camera);
 
     if (domElements && domElements.length > 0) {
-      const intersects = raycaster.intersectObjects(domElements, true);
+      const validElements = domElements.filter(el => el && el.geometry && el.material && el.visible);
+      if (validElements.length > 0) {
+        const intersects = raycaster.intersectObjects(validElements, true);
 
-      if (intersects.length > 0) {
-        const object = intersects[0].object;
-        handleElementHover(object);
-        canvas.style.cursor = 'pointer';
-      } else {
-        clearHoverEffects();
-        canvas.style.cursor = 'default';
+        if (intersects.length > 0) {
+          const object = intersects[0].object;
+          handleElementHover(object);
+          canvas.style.cursor = 'pointer';
+        } else {
+          clearHoverEffects();
+          canvas.style.cursor = 'default';
+        }
       }
     }
   });

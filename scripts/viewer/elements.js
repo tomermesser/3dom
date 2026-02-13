@@ -144,7 +144,15 @@ function getElementColor(element) {
   // If element has a background color, use it with slight transparency
   if (element.styles.backgroundColor && element.styles.backgroundColor !== 'rgba(0, 0, 0, 0)') {
     try {
-      return new THREE.Color(element.styles.backgroundColor);
+      // Convert rgba() to rgb() since THREE.Color doesn't support alpha
+      let colorStr = element.styles.backgroundColor;
+      if (colorStr.startsWith('rgba(')) {
+        colorStr = colorStr.replace(/rgba\(([^)]+)\)/, (match, values) => {
+          const parts = values.split(',').slice(0, 3); // Take only RGB, ignore alpha
+          return `rgb(${parts.join(',')})`;
+        });
+      }
+      return new THREE.Color(colorStr);
     } catch (e) {
       console.warn('3DOM Elements: Failed to parse color:', element.styles.backgroundColor, 'for element:', element.tagName, element.id || '(no id)');
       // Fall through to type-based coloring
