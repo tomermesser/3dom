@@ -27,6 +27,14 @@ const MAX_CAMERA_HEIGHT = 200;
 // Hover effect constants
 const HOVER_OPACITY_INCREASE = 0.2;
 
+// Animation constants
+const PULSE_DURATION = 300;
+const GLOW_DURATION = 500;
+const PULSE_MAX_INTENSITY = 0.5;
+const GLOW_MAX_INTENSITY = 1.0;
+const INPUT_FOCUS_INTENSITY = 0.8;
+const INPUT_FOCUS_COLOR = 0x00ffff;
+
 // Initialize when DOM is loaded
 document.addEventListener("DOMContentLoaded", () => {
   console.log("3DOM Viewer: Initializing...");
@@ -445,8 +453,8 @@ function handleButtonClick(element) {
 // Handle input click
 function handleInputClick(element) {
   console.log('3DOM Core: Input clicked');
-  // Clear previous focus
-  if (focusedInput && focusedInput !== element) {
+  // Clear previous focus (validate element still exists in scene)
+  if (focusedInput && focusedInput !== element && focusedInput.parent) {
     clearInputFocus(focusedInput);
   }
   // Apply glowing border
@@ -467,26 +475,37 @@ function handleSelectClick(element, domElement) {
 // Animation helper: pulse effect for links
 function animatePulse(element) {
   // Brief pulse: increase emissive intensity and fade back
-  const duration = 300;
-  const startTime = Date.now();
+  const startTime = performance.now();
 
   element.traverse((child) => {
-    if (child.material && child.material.emissive) {
-      const originalEmissive = child.material.emissive.clone();
+    if (child.material && child.material.emissive && 'emissiveIntensity' in child.material) {
+      // Prevent overlapping animations
+      if (child.userData.isAnimating) {
+        // Cancel existing animation
+        if (child.userData.animationId) {
+          cancelAnimationFrame(child.userData.animationId);
+        }
+      }
+
+      child.userData.isAnimating = true;
       const originalIntensity = child.material.emissiveIntensity || 0;
 
       const animate = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / duration, 1);
+        const elapsed = performance.now() - startTime;
+        const progress = Math.min(elapsed / PULSE_DURATION, 1);
 
         // Pulse: go up then down (sine wave)
-        const intensity = Math.sin(progress * Math.PI) * 0.5;
+        const intensity = Math.sin(progress * Math.PI) * PULSE_MAX_INTENSITY;
         child.material.emissiveIntensity = originalIntensity + intensity;
 
         if (progress < 1) {
-          requestAnimationFrame(animate);
+          child.userData.animationId = requestAnimationFrame(animate);
         } else {
           child.material.emissiveIntensity = originalIntensity;
+          child.userData.isAnimating = false;
+          if (child.userData.animationId) {
+            delete child.userData.animationId;
+          }
         }
       };
       animate();
@@ -497,24 +516,37 @@ function animatePulse(element) {
 // Animation helper: glow effect for buttons
 function animateGlow(element, duration) {
   // Glow effect: bright emissive that fades to 0
-  const startTime = Date.now();
+  const startTime = performance.now();
 
   element.traverse((child) => {
-    if (child.material && child.material.emissive) {
+    if (child.material && child.material.emissive && 'emissiveIntensity' in child.material) {
+      // Prevent overlapping animations
+      if (child.userData.isAnimating) {
+        // Cancel existing animation
+        if (child.userData.animationId) {
+          cancelAnimationFrame(child.userData.animationId);
+        }
+      }
+
+      child.userData.isAnimating = true;
       const originalIntensity = child.material.emissiveIntensity || 0;
 
       const animate = () => {
-        const elapsed = Date.now() - startTime;
+        const elapsed = performance.now() - startTime;
         const progress = Math.min(elapsed / duration, 1);
 
-        // Fade from 1.0 to original
-        const intensity = 1.0 * (1 - progress) + originalIntensity * progress;
+        // Fade from GLOW_MAX_INTENSITY to original
+        const intensity = GLOW_MAX_INTENSITY * (1 - progress) + originalIntensity * progress;
         child.material.emissiveIntensity = intensity;
 
         if (progress < 1) {
-          requestAnimationFrame(animate);
+          child.userData.animationId = requestAnimationFrame(animate);
         } else {
           child.material.emissiveIntensity = originalIntensity;
+          child.userData.isAnimating = false;
+          if (child.userData.animationId) {
+            delete child.userData.animationId;
+          }
         }
       };
       animate();
@@ -526,12 +558,12 @@ function animateGlow(element, duration) {
 function applyInputFocus(element) {
   // Create glowing border effect using emissive
   element.traverse((child) => {
-    if (child.material && child.material.emissive) {
+    if (child.material && child.material.emissive && 'emissiveIntensity' in child.material) {
       child.userData.inputFocused = true;
       child.userData.originalEmissiveIntensity = child.material.emissiveIntensity || 0;
       child.userData.originalEmissiveColor = child.material.emissive.clone();
-      child.material.emissiveIntensity = 0.8; // Continuous glow
-      child.material.emissive.setHex(0x00ffff); // Cyan glow
+      child.material.emissiveIntensity = INPUT_FOCUS_INTENSITY;
+      child.material.emissive.setHex(INPUT_FOCUS_COLOR);
     }
   });
 }
@@ -540,7 +572,7 @@ function applyInputFocus(element) {
 function clearInputFocus(element) {
   // Remove glowing border
   element.traverse((child) => {
-    if (child.material && child.userData.inputFocused) {
+    if (child.material && child.userData.inputFocused && 'emissiveIntensity' in child.material) {
       child.material.emissiveIntensity = child.userData.originalEmissiveIntensity || 0;
       if (child.userData.originalEmissiveColor) {
         child.material.emissive.copy(child.userData.originalEmissiveColor);
