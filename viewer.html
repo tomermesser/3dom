@@ -6,6 +6,31 @@
     <title>3DOM - 3D Webpage Viewer</title>
     <link rel="stylesheet" href="/styles/viewer.css" />
     <style>
+      /* CSS Variables for maintainability */
+      :root {
+        /* Spacing */
+        --controls-spacing-xs: 4px;
+        --controls-spacing-sm: 6px;
+        --controls-spacing-md: 8px;
+        --controls-spacing-lg: 10px;
+
+        /* Sizes */
+        --controls-min-width: 220px;
+        --controls-max-width: 280px;
+        --checkbox-size: 16px;
+
+        /* Colors */
+        --controls-bg: rgba(0, 0, 0, 0.85);
+        --controls-hover-bg: rgba(255, 255, 255, 0.1);
+        --controls-border: rgba(255, 255, 255, 0.3);
+        --focus-color: #4A9EFF;
+
+        /* Typography */
+        --controls-font-size: 13px;
+        --controls-font-size-sm: 11px;
+        --controls-font-size-md: 15px;
+      }
+
       body {
         margin: 0;
         padding: 0;
@@ -46,7 +71,7 @@
         font-size: 18px;
       }
       .loading-status {
-        margin-top: 10px;
+        margin-top: var(--controls-spacing-lg);
         font-size: 14px;
         color: #aaa;
       }
@@ -70,17 +95,17 @@
       /* Visibility Controls Panel */
       .controls-panel {
         position: fixed;
-        top: 10px;
-        right: 10px;
-        background-color: rgba(0, 0, 0, 0.85);
+        top: var(--controls-spacing-lg);
+        right: var(--controls-spacing-lg);
+        background-color: var(--controls-bg);
         color: white;
-        padding: 10px;
-        border-radius: 8px;
+        padding: var(--controls-spacing-lg);
+        border-radius: var(--controls-spacing-md);
         font-family: Arial, sans-serif;
-        font-size: 13px;
+        font-size: var(--controls-font-size);
         z-index: 1001;
-        min-width: 220px;
-        max-width: 280px;
+        min-width: var(--controls-min-width);
+        max-width: var(--controls-max-width);
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
       }
 
@@ -88,14 +113,18 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 10px;
+        margin-bottom: var(--controls-spacing-lg);
         cursor: pointer;
         user-select: none;
       }
 
+      .controls-header:focus-within {
+        background-color: rgba(255, 255, 255, 0.05);
+      }
+
       .controls-header h3 {
         margin: 0;
-        font-size: 15px;
+        font-size: var(--controls-font-size-md);
         font-weight: bold;
       }
 
@@ -105,13 +134,18 @@
         color: white;
         font-size: 12px;
         cursor: pointer;
-        padding: 4px 8px;
-        border-radius: 4px;
+        padding: var(--controls-spacing-xs) var(--controls-spacing-md);
+        border-radius: var(--controls-spacing-xs);
         transition: background-color 0.2s;
       }
 
       .toggle-btn:hover {
-        background-color: rgba(255, 255, 255, 0.1);
+        background-color: var(--controls-hover-bg);
+      }
+
+      .toggle-btn:focus-visible {
+        outline: 2px solid var(--focus-color);
+        outline-offset: 2px;
       }
 
       .controls-content {
@@ -125,18 +159,18 @@
       .controls-actions {
         display: flex;
         gap: 5px;
-        margin-bottom: 10px;
+        margin-bottom: var(--controls-spacing-lg);
       }
 
       .action-btn {
         flex: 1;
-        padding: 5px 8px;
+        padding: 5px var(--controls-spacing-md);
         background-color: rgba(255, 255, 255, 0.15);
         color: white;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        border-radius: 4px;
+        border: 1px solid var(--controls-border);
+        border-radius: var(--controls-spacing-xs);
         cursor: pointer;
-        font-size: 11px;
+        font-size: var(--controls-font-size-sm);
         transition: background-color 0.2s;
       }
 
@@ -144,35 +178,74 @@
         background-color: rgba(255, 255, 255, 0.25);
       }
 
+      .action-btn:focus-visible {
+        outline: 2px solid var(--focus-color);
+        outline-offset: 2px;
+      }
+
       .controls-list {
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        gap: var(--controls-spacing-sm);
       }
 
       .control-item {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: var(--controls-spacing-md);
         cursor: pointer;
-        padding: 4px;
-        border-radius: 4px;
+        padding: var(--controls-spacing-xs);
+        border-radius: var(--controls-spacing-xs);
         transition: background-color 0.2s;
       }
 
       .control-item:hover {
-        background-color: rgba(255, 255, 255, 0.1);
+        background-color: var(--controls-hover-bg);
       }
 
       .control-item input[type="checkbox"] {
         cursor: pointer;
-        width: 16px;
-        height: 16px;
+        width: var(--checkbox-size);
+        height: var(--checkbox-size);
         margin: 0;
+      }
+
+      .control-item input[type="checkbox"]:focus-visible {
+        outline: 2px solid var(--focus-color);
+        outline-offset: 2px;
       }
 
       .control-item span {
         user-select: none;
+      }
+
+      /* Mobile responsiveness */
+      @media (max-width: 768px) {
+        .controls-panel {
+          top: 5px;
+          right: 5px;
+          min-width: 180px;
+          max-width: 240px;
+          font-size: 12px;
+        }
+
+        .controls-header h3 {
+          font-size: 13px;
+        }
+
+        .action-btn {
+          font-size: 10px;
+          padding: var(--controls-spacing-xs) var(--controls-spacing-sm);
+        }
+      }
+
+      @media (max-width: 480px) {
+        .controls-panel {
+          top: 0;
+          right: 0;
+          border-radius: 0 0 0 var(--controls-spacing-md);
+          min-width: 160px;
+        }
       }
     </style>
   </head>
@@ -218,9 +291,9 @@
     <div id="visibility-controls" class="controls-panel">
       <div class="controls-header">
         <h3>Element Visibility</h3>
-        <button id="toggle-controls" class="toggle-btn" aria-label="Toggle controls">▼</button>
+        <button id="toggle-controls" class="toggle-btn" aria-label="Toggle controls" aria-expanded="true" aria-controls="controls-content">▼</button>
       </div>
-      <div id="controls-content" class="controls-content">
+      <div id="controls-content" class="controls-content" role="region" aria-label="Element visibility controls">
         <div class="controls-actions">
           <button id="select-all-btn" class="action-btn">Select All</button>
           <button id="deselect-all-btn" class="action-btn">Deselect All</button>
@@ -271,23 +344,18 @@
     document.addEventListener('DOMContentLoaded', () => {
       const toggleBtn = document.getElementById('toggle-controls');
       const controlsContent = document.getElementById('controls-content');
-      const controlsHeader = document.querySelector('.controls-header');
 
-      // Toggle collapse/expand
+      // Toggle collapse/expand with proper ARIA state management
       const toggleControls = () => {
-        controlsContent.classList.toggle('collapsed');
-        toggleBtn.textContent = controlsContent.classList.contains('collapsed') ? '▶' : '▼';
+        const isCollapsed = controlsContent.classList.toggle('collapsed');
+        toggleBtn.textContent = isCollapsed ? '▶' : '▼';
+        toggleBtn.setAttribute('aria-expanded', !isCollapsed);
       };
 
+      // Only handle clicks on the toggle button to avoid keyboard navigation conflict
       toggleBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         toggleControls();
-      });
-
-      controlsHeader.addEventListener('click', (e) => {
-        if (e.target !== toggleBtn) {
-          toggleControls();
-        }
       });
 
       // Select All functionality
