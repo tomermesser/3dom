@@ -13,6 +13,11 @@ let sceneInitialized = false;
 // Cache zoom display element
 let zoomDisplayElement = null;
 
+// Raycasting for interaction
+let raycaster = null;
+let mouse = new THREE.Vector2();
+let hoveredElement = null;
+
 // Camera height constants
 const MIN_CAMERA_HEIGHT = 20;
 const MAX_CAMERA_HEIGHT = 200;
@@ -162,9 +167,6 @@ function initScene() {
   renderer.shadowMap.enabled = false; // Disabled for performance
   document.getElementById('viewer-container').appendChild(renderer.domElement);
 
-  // Create pan/zoom controls
-  setupPanZoomControls();
-
   // Add lighting for top-down view
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
   scene.add(ambientLight);
@@ -183,6 +185,15 @@ function initScene() {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
+
+  // Initialize raycaster for interaction
+  raycaster = new THREE.Raycaster();
+
+  // Create pan/zoom controls
+  setupPanZoomControls();
+
+  // Setup click handler after controls
+  setupClickHandler();
 }
 
 // Set up pan/zoom controls for top-down view
@@ -309,4 +320,105 @@ function addWebsiteInfoPanel(domData) {
   `;
 
   document.body.appendChild(infoPanel);
+}
+
+// Set up click and hover handlers for raycasting
+function setupClickHandler() {
+  const canvas = renderer.domElement;
+
+  // Click detection
+  canvas.addEventListener('click', (event) => {
+    // Calculate mouse position in normalized device coordinates
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    // Update raycaster
+    raycaster.setFromCamera(mouse, camera);
+
+    // Check intersections with domElements
+    if (domElements && domElements.length > 0) {
+      const intersects = raycaster.intersectObjects(domElements, true);
+
+      if (intersects.length > 0) {
+        const clickedObject = intersects[0].object;
+        handleElementClick(clickedObject);
+      }
+    }
+  });
+
+  // Hover detection
+  canvas.addEventListener('mousemove', (event) => {
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+
+    if (domElements && domElements.length > 0) {
+      const intersects = raycaster.intersectObjects(domElements, true);
+
+      if (intersects.length > 0) {
+        const object = intersects[0].object;
+        handleElementHover(object);
+        canvas.style.cursor = 'pointer';
+      } else {
+        clearHoverEffects();
+        canvas.style.cursor = 'default';
+      }
+    }
+  });
+}
+
+// Handle element click
+function handleElementClick(object) {
+  // Find the root element group
+  let element = object;
+  while (element.parent && !element.userData.domElement) {
+    element = element.parent;
+  }
+
+  if (element.userData && element.userData.domElement) {
+    console.log('3DOM Core: Clicked element', element.userData.domElement);
+    // Element-specific behaviors will be added in next task
+  }
+}
+
+// Handle element hover
+function handleElementHover(object) {
+  // Find the root element group
+  let element = object;
+  while (element.parent && !element.userData.domElement) {
+    element = element.parent;
+  }
+
+  // Only apply hover to interactive elements
+  if (element.userData && element.userData.domElement) {
+    const domElement = element.userData.domElement;
+    const isInteractive = ['A', 'BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(domElement.tagName);
+
+    if (isInteractive && element !== hoveredElement) {
+      clearHoverEffects();
+      hoveredElement = element;
+
+      // Increase opacity for hover effect
+      element.traverse((child) => {
+        if (child.material && child.material.opacity !== undefined) {
+          child.userData.originalOpacity = child.material.opacity;
+          child.material.opacity = Math.min(1.0, child.material.opacity + 0.2);
+        }
+      });
+    }
+  }
+}
+
+// Clear hover effects
+function clearHoverEffects() {
+  if (hoveredElement) {
+    hoveredElement.traverse((child) => {
+      if (child.material && child.userData.originalOpacity !== undefined) {
+        child.material.opacity = child.userData.originalOpacity;
+        delete child.userData.originalOpacity;
+      }
+    });
+    hoveredElement = null;
+  }
 }
