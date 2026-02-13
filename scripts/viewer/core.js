@@ -17,10 +17,14 @@ let zoomDisplayElement = null;
 let raycaster = null;
 let mouse = new THREE.Vector2();
 let hoveredElement = null;
+let clickHandlerInitialized = false;
 
 // Camera height constants
 const MIN_CAMERA_HEIGHT = 20;
 const MAX_CAMERA_HEIGHT = 200;
+
+// Hover effect constants
+const HOVER_OPACITY_INCREASE = 0.2;
 
 // Initialize when DOM is loaded
 document.addEventListener("DOMContentLoaded", () => {
@@ -200,12 +204,14 @@ function initScene() {
 function setupPanZoomControls() {
   const canvas = renderer.domElement;
   let isDragging = false;
+  let hasDragged = false;
   let previousMousePosition = { x: 0, y: 0 };
   let cameraTarget = { x: 0, z: 0 };
 
   // Mouse down - start dragging
   canvas.addEventListener('mousedown', (event) => {
     isDragging = true;
+    hasDragged = false;
     previousMousePosition = {
       x: event.clientX,
       y: event.clientY
@@ -218,6 +224,9 @@ function setupPanZoomControls() {
 
     const deltaX = event.clientX - previousMousePosition.x;
     const deltaY = event.clientY - previousMousePosition.y;
+
+    // Mark that we've actually dragged
+    hasDragged = true;
 
     // Pan speed based on camera height (zoom level)
     const panSpeed = camera.position.y / 1000; // Adaptive to zoom
@@ -238,6 +247,9 @@ function setupPanZoomControls() {
   window.addEventListener('mouseup', () => {
     isDragging = false;
   });
+
+  // Make hasDragged accessible to click handler
+  canvas.hasDragged = () => hasDragged;
 
   // Mouse wheel - zoom
   canvas.addEventListener('wheel', (event) => {
@@ -324,10 +336,22 @@ function addWebsiteInfoPanel(domData) {
 
 // Set up click and hover handlers for raycasting
 function setupClickHandler() {
+  // Prevent duplicate initialization
+  if (clickHandlerInitialized) {
+    console.warn('3DOM Core: Click handler already initialized');
+    return;
+  }
+  clickHandlerInitialized = true;
+
   const canvas = renderer.domElement;
 
   // Click detection
   canvas.addEventListener('click', (event) => {
+    // Ignore clicks that follow a drag
+    if (canvas.hasDragged && canvas.hasDragged()) {
+      return;
+    }
+
     // Calculate mouse position in normalized device coordinates
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -370,9 +394,9 @@ function setupClickHandler() {
 
 // Handle element click
 function handleElementClick(object) {
-  // Find the root element group
+  // Find the root element group (with scene boundary check)
   let element = object;
-  while (element.parent && !element.userData.domElement) {
+  while (element.parent && element.parent !== scene && !element.userData.domElement) {
     element = element.parent;
   }
 
@@ -384,9 +408,9 @@ function handleElementClick(object) {
 
 // Handle element hover
 function handleElementHover(object) {
-  // Find the root element group
+  // Find the root element group (with scene boundary check)
   let element = object;
-  while (element.parent && !element.userData.domElement) {
+  while (element.parent && element.parent !== scene && !element.userData.domElement) {
     element = element.parent;
   }
 
@@ -403,9 +427,14 @@ function handleElementHover(object) {
       element.traverse((child) => {
         if (child.material && child.material.opacity !== undefined) {
           child.userData.originalOpacity = child.material.opacity;
-          child.material.opacity = Math.min(1.0, child.material.opacity + 0.2);
+          child.userData.originalTransparent = child.material.transparent;
+          child.material.transparent = true;
+          child.material.opacity = Math.min(1.0, child.material.opacity + HOVER_OPACITY_INCREASE);
         }
       });
+    } else if (!isInteractive) {
+      // Clear hover effects when moving to non-interactive elements
+      clearHoverEffects();
     }
   }
 }
@@ -417,6 +446,10 @@ function clearHoverEffects() {
       if (child.material && child.userData.originalOpacity !== undefined) {
         child.material.opacity = child.userData.originalOpacity;
         delete child.userData.originalOpacity;
+      }
+      if (child.material && child.userData.originalTransparent !== undefined) {
+        child.material.transparent = child.userData.originalTransparent;
+        delete child.userData.originalTransparent;
       }
     });
     hoveredElement = null;
