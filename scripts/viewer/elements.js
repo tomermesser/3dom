@@ -3,9 +3,26 @@
  * Creates geometric shapes for DOM elements in city view
  */
 
+// Configuration constants
+const BASE_HEIGHT = 0.5; // Base height unit for z-index calculation
+const MIN_ELEMENT_SIZE = 10; // Minimum element size in pixels
+const MAX_TEXT_LENGTH = 100; // Maximum text length for textures
+const CANVAS_SIZE = 512; // Canvas size for text textures
+
 // Create all element shapes
 function createCityElements(domData) {
   console.log('3DOM City: Creating element shapes...');
+
+  // Validate dependencies
+  if (!window.cityData || !window.cityData.scale || !window.cityData.pageMetrics) {
+    console.error('3DOM Elements: cityData not initialized. Make sure city.js has run first.');
+    return [];
+  }
+
+  if (!window.scene || typeof window.scene.add !== 'function') {
+    console.error('3DOM Elements: Scene not initialized.');
+    return [];
+  }
 
   const elements = domData.elements;
   const scale = window.cityData.scale;
@@ -14,11 +31,18 @@ function createCityElements(domData) {
 
   elements.forEach((element, index) => {
     // Skip tiny elements
-    if (element.dimensions.width < 10 || element.dimensions.height < 10) {
+    if (element.dimensions.width < MIN_ELEMENT_SIZE || element.dimensions.height < MIN_ELEMENT_SIZE) {
       return;
     }
 
-    const elementShape = createElementShape(element, scale, pageMetrics);
+    let elementShape;
+    try {
+      elementShape = createElementShape(element, scale, pageMetrics);
+    } catch (error) {
+      console.warn('3DOM Elements: Failed to create shape for element:', element.tagName, element.id || '(no id)', error.message);
+      return; // Skip this element
+    }
+
     if (elementShape) {
       scene.add(elementShape);
       elementObjects.push({
@@ -39,8 +63,9 @@ function createElementShape(element, scale, pageMetrics) {
   const depth = element.dimensions.height * scale;
 
   // Calculate height based on z-index
-  const baseHeight = 0.5;
-  const height = (element.zIndex + 1) * baseHeight;
+  // Validate zIndex is a valid number
+  const zIndex = typeof element.zIndex === 'number' && !isNaN(element.zIndex) ? Math.max(0, element.zIndex) : 0;
+  const height = (zIndex + 1) * BASE_HEIGHT;
 
   // Determine geometry type based on border-radius
   const geometry = createGeometryForElement(element, width, height, depth);
@@ -121,6 +146,7 @@ function getElementColor(element) {
     try {
       return new THREE.Color(element.styles.backgroundColor);
     } catch (e) {
+      console.warn('3DOM Elements: Failed to parse color:', element.styles.backgroundColor, 'for element:', element.tagName, element.id || '(no id)');
       // Fall through to type-based coloring
     }
   }
@@ -142,13 +168,12 @@ function getElementColor(element) {
 // Create text texture for element
 function createTextTexture(text, width, depth) {
   // Limit text length for performance
-  const maxLength = 100;
-  const displayText = text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+  const displayText = text.length > MAX_TEXT_LENGTH ? text.substring(0, MAX_TEXT_LENGTH) + '...' : text;
 
   // Create canvas
   const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 512;
+  canvas.width = CANVAS_SIZE;
+  canvas.height = CANVAS_SIZE;
   const context = canvas.getContext('2d');
 
   // Fill background (semi-transparent)
