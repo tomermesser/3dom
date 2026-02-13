@@ -18,6 +18,7 @@ let raycaster = null;
 let mouse = new THREE.Vector2();
 let hoveredElement = null;
 let clickHandlerInitialized = false;
+let focusedInput = null;
 
 // Camera height constants
 const MIN_CAMERA_HEIGHT = 20;
@@ -403,9 +404,154 @@ function handleElementClick(object) {
   }
 
   if (element.userData && element.userData.domElement) {
-    console.log('3DOM Core: Clicked element', element.userData.domElement);
-    // Element-specific behaviors will be added in next task
+    const domElement = element.userData.domElement;
+    console.log('3DOM Core: Clicked element', domElement);
+
+    // Handle different element types
+    switch (domElement.tagName) {
+      case 'A':
+        handleLinkClick(element, domElement);
+        break;
+      case 'BUTTON':
+        handleButtonClick(element);
+        break;
+      case 'INPUT':
+      case 'TEXTAREA':
+        handleInputClick(element);
+        break;
+      case 'SELECT':
+        handleSelectClick(element, domElement);
+        break;
+      default:
+        console.log('3DOM Core: Non-interactive element clicked');
+    }
   }
+}
+
+// Handle link click
+function handleLinkClick(element, domElement) {
+  console.log('3DOM Core: Link clicked ->', domElement.href || 'no href');
+  // Pulse animation (brief highlight)
+  animatePulse(element);
+}
+
+// Handle button click
+function handleButtonClick(element) {
+  console.log('3DOM Core: Button clicked');
+  // Glow/shine effect with 500ms fade
+  animateGlow(element, 500);
+}
+
+// Handle input click
+function handleInputClick(element) {
+  console.log('3DOM Core: Input clicked');
+  // Clear previous focus
+  if (focusedInput && focusedInput !== element) {
+    clearInputFocus(focusedInput);
+  }
+  // Apply glowing border
+  applyInputFocus(element);
+  focusedInput = element;
+}
+
+// Handle select click
+function handleSelectClick(element, domElement) {
+  console.log('3DOM Core: Select clicked');
+  // Placeholder for future floating bridge implementation
+  // For now, just log the options
+  if (domElement.options) {
+    console.log('3DOM Core: Select has', domElement.options.length, 'options');
+  }
+}
+
+// Animation helper: pulse effect for links
+function animatePulse(element) {
+  // Brief pulse: increase emissive intensity and fade back
+  const duration = 300;
+  const startTime = Date.now();
+
+  element.traverse((child) => {
+    if (child.material && child.material.emissive) {
+      const originalEmissive = child.material.emissive.clone();
+      const originalIntensity = child.material.emissiveIntensity || 0;
+
+      const animate = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        // Pulse: go up then down (sine wave)
+        const intensity = Math.sin(progress * Math.PI) * 0.5;
+        child.material.emissiveIntensity = originalIntensity + intensity;
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          child.material.emissiveIntensity = originalIntensity;
+        }
+      };
+      animate();
+    }
+  });
+}
+
+// Animation helper: glow effect for buttons
+function animateGlow(element, duration) {
+  // Glow effect: bright emissive that fades to 0
+  const startTime = Date.now();
+
+  element.traverse((child) => {
+    if (child.material && child.material.emissive) {
+      const originalIntensity = child.material.emissiveIntensity || 0;
+
+      const animate = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        // Fade from 1.0 to original
+        const intensity = 1.0 * (1 - progress) + originalIntensity * progress;
+        child.material.emissiveIntensity = intensity;
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          child.material.emissiveIntensity = originalIntensity;
+        }
+      };
+      animate();
+    }
+  });
+}
+
+// Apply focus effect to input elements
+function applyInputFocus(element) {
+  // Create glowing border effect using emissive
+  element.traverse((child) => {
+    if (child.material && child.material.emissive) {
+      child.userData.inputFocused = true;
+      child.userData.originalEmissiveIntensity = child.material.emissiveIntensity || 0;
+      child.userData.originalEmissiveColor = child.material.emissive.clone();
+      child.material.emissiveIntensity = 0.8; // Continuous glow
+      child.material.emissive.setHex(0x00ffff); // Cyan glow
+    }
+  });
+}
+
+// Clear focus effect from input elements
+function clearInputFocus(element) {
+  // Remove glowing border
+  element.traverse((child) => {
+    if (child.material && child.userData.inputFocused) {
+      child.material.emissiveIntensity = child.userData.originalEmissiveIntensity || 0;
+      if (child.userData.originalEmissiveColor) {
+        child.material.emissive.copy(child.userData.originalEmissiveColor);
+      } else {
+        child.material.emissive.setHex(0x000000); // Reset to black
+      }
+      delete child.userData.inputFocused;
+      delete child.userData.originalEmissiveIntensity;
+      delete child.userData.originalEmissiveColor;
+    }
+  });
 }
 
 // Handle element hover
