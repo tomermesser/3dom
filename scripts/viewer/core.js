@@ -110,8 +110,12 @@ function processReceivedData(domData) {
   // Set up animation
   animate();
 
-  // Display zoom level (use initial camera height)
-  updateZoomDisplay(400);
+  // Display zoom level
+  updateZoomDisplay(camera.position.y);
+
+  // Log scene info for debugging
+  console.log('3DOM Core: Scene initialized with', domElements.length, 'elements');
+  console.log('3DOM Core: Camera at height:', camera.position.y, 'viewSize:', 400);
 
   // Add website info panel
   addWebsiteInfoPanel(domData);

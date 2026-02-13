@@ -45,11 +45,8 @@ function createCityElements(domData) {
 
     if (elementShape) {
       scene.add(elementShape);
-      elementObjects.push({
-        object: elementShape,
-        domElement: element,
-        detailLevel: 'high'
-      });
+      // Push the mesh directly (userData already contains domElement)
+      elementObjects.push(elementShape);
     }
   });
 
