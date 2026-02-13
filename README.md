@@ -1,13 +1,42 @@
 # 3DOM - 3D Webpage Viewer
 
-A Chrome extension that transforms regular webpages into interactive 3D environments using Three.js.
+A Chrome extension that transforms webpages into interactive 3D city landscapes using Three.js. View any webpage from a bird's-eye perspective where DOM elements become geometric buildings with heights based on their CSS z-index.
 
 ## Features
 
-- Scans the current webpage's DOM structure
-- Transforms 2D elements into 3D objects
-- Navigate the 3D space using first-person controls
-- Explore webpages in a completely new way
+### Core City View
+- **Bird's-Eye Perspective**: Orthographic top-down camera view like Google Maps
+- **3D Element Shapes**: DOM elements rendered as geometric shapes (boxes, cylinders, rounded boxes)
+- **Z-Index Heights**: Element height determined by CSS z-index (higher z-index = taller buildings)
+- **Colored Districts**: Container backgrounds become colored ground planes
+- **Glass-Like Materials**: Semi-transparent shapes with transmission effects for visual layering
+
+### Navigation & Controls
+- **Pan**: Click and drag to move the camera horizontally across the city
+- **Zoom**: Mouse wheel to zoom in/out (with visual zoom percentage indicator)
+- **Drag Detection**: Smart distinction between panning and clicking elements
+
+### Interactive Elements
+- **Click Detection**: Raycasting-based element selection from top-down view
+- **Hover Effects**: Interactive elements (links, buttons, inputs) highlight on hover
+- **Element-Specific Behaviors**:
+  - **Links**: Pulse animation on click
+  - **Buttons**: 500ms bright glow effect that fades out
+  - **Input Fields**: Continuous cyan glow when focused, clears when clicking another input
+  - **Selects**: Console logging (floating bridge UI planned for future)
+
+### Visibility Controls
+- **Collapsible UI Panel**: Top-right corner with 9 element type filters
+- **Element Categories**: Headers, Images, Text/Paragraphs, Links, Buttons, Forms, Containers, Navigation, Other
+- **Instant Filtering**: Check/uncheck to immediately show/hide element types
+- **Bulk Actions**: "Select All" / "Deselect All" buttons
+- **Smart DIV Classification**: Distinguishes between text-containing DIVs and structural container DIVs
+
+### Accessibility & Mobile
+- **Keyboard Navigation**: Full Tab, Enter, Space support with visible focus indicators
+- **Screen Reader Compatible**: ARIA attributes (aria-expanded, aria-controls, role="region")
+- **Mobile Responsive**: Adaptive layouts for tablets and phones with touch-friendly controls
+- **CSS Variables**: Maintainable theming system with centralized design tokens
 
 ## Installation
 
@@ -21,102 +50,169 @@ A Chrome extension that transforms regular webpages into interactive 3D environm
 
 1. Navigate to any webpage you want to view in 3D
 2. Click the 3DOM icon in your Chrome toolbar
-3. The extension will scan the webpage and open a new tab with the 3D view
-4. Use WASD keys to move around and mouse to look around
-5. Click on the 3D view to enable controls
+3. The extension will scan the webpage and open a new tab with the 3D city view
+4. **Controls**:
+   - **Pan**: Click and drag to move around the city
+   - **Zoom**: Mouse wheel to zoom in/out
+   - **Click Elements**: Click any shape to interact with it
+   - **Visibility**: Use the top-right panel to filter element types
+   - **Keyboard**: Tab through controls, Enter/Space to activate
+
+## Architecture
+
+### File Structure
+```
+3dom/
+├── manifest.json          # Chrome extension configuration
+├── background.js          # Background service worker for messaging
+├── scripts/
+│   ├── content.js         # DOM scanning and data extraction
+│   └── viewer/
+│       ├── core.js        # Camera, controls, raycasting, visibility
+│       ├── city.js        # Ground plane and districts
+│       ├── elements.js    # 3D shape generation
+│       ├── images.js      # Image texture handling
+│       └── utils.js       # Helper functions
+├── viewer.html            # Main viewer page with UI controls
+└── demo.html              # Test page with sample content
+```
+
+### Data Flow
+1. User clicks extension icon on a webpage
+2. `content.js` scans DOM → extracts elements, positions, styles, z-index
+3. `background.js` stores data in memory
+4. Viewer opens in new tab
+5. Viewer requests data from background script
+6. City view renders with Three.js:
+   - `city.js` creates ground plane and colored districts
+   - `elements.js` generates 3D shapes for all elements
+   - `core.js` sets up camera, controls, and interactions
 
 ## Customization
 
-This extension is highly customizable. You can modify the following files to change its behavior:
+### Modifying Element Colors
+Edit `scripts/viewer/elements.js` → `getElementColor()` function
 
-- `scripts/content.js`: Change how the DOM is scanned and analyzed
-- `scripts/viewer.js`: Modify the 3D rendering and object representations
-- `viewer.html`: Customize the viewer interface
+### Adjusting Camera Behavior
+Edit `scripts/viewer/core.js` → `MIN_CAMERA_HEIGHT` and `MAX_CAMERA_HEIGHT` constants
 
-## Creating Icons
+### Changing Visibility Categories
+Edit `scripts/viewer/core.js` → `setupVisibilityControls()` → `controlMap` object
 
-To create your own icons, replace the placeholder images in the `images` directory:
+### Styling UI Controls
+Edit `viewer.html` → CSS variables in `:root` block (lines 10-32)
 
-- `icon16.png`: 16x16 pixels
-- `icon48.png`: 48x48 pixels
-- `icon128.png`: 128x128 pixels
+## Performance Optimizations
+
+### Element Filtering (content.js)
+- Prioritizes visible, meaningful elements (~300 max)
+- Skips elements < 10x10 pixels
+- Optimizes image data (resolution & compression)
+
+### Rendering (viewer)
+- Uses `visible` flag instead of geometry disposal/recreation
+- Frustum culling (automatic Three.js feature)
+- Shared materials for same element types
+- No shadows (not beneficial for top-down view)
+- Efficient raycasting with drag detection
+
+### Memory Management
+- Animation cleanup with `cancelAnimationFrame`
+- Event listener deduplication with initialization flags
+- userData cleanup after animations
+- Proper disposal on page navigation
+
+## Known Limitations
+
+- **Select/Dropdown Elements**: Currently only log to console; floating bridge UI not yet implemented
+- **Link Navigation**: Links are detected and animated but don't yet navigate to href targets
+- **Text Rendering**: Large blocks of text may be truncated for performance
+- **CORS Restrictions**: Some external images may not load due to browser security policies
 
 ## Future Development
 
-- Texture mapping based on actual webpage content
-- Interactive elements in 3D space
-- Improved performance for complex webpages
-- Enhanced visual effects and transitions
+- Implement "floating bridge" UI for select/dropdown elements
+- Add actual link navigation (navigate to href and rebuild scene)
+- Display clicked element details in info panel
+- Enhanced text rendering with better typography
+- VR/AR support for immersive exploration
+- Export city view as 3D model (glTF, OBJ)
+- Animation system for page transitions
 
-## Image Handling Improvements
+## Technical Details
 
-To fix issues with images not appearing on museum walls:
+### Three.js Components
+- **Camera**: `OrthographicCamera` for true top-down view
+- **Materials**: `MeshPhysicalMaterial` with transmission for glass effect
+- **Controls**: Custom pan/zoom implementation (not using OrbitControls)
+- **Raycasting**: For click detection and hover effects
 
-1. **Image Proxying**: The content script now converts external images to data URLs before sending to the 3D viewer
+### Browser Compatibility
+- Chrome/Edge: Full support (Manifest V3)
+- Firefox: Not tested (would require Manifest V2 adaptation)
+- Safari: Not supported (no extension support for Manifest V3)
 
-   - Uses multiple approaches to handle CORS restrictions:
-     - Direct loading with crossOrigin="anonymous"
-     - Fallback to fetch API with blob URLs
-     - Final fallback to informative placeholders
+### Performance Targets
+- 60fps panning and zooming
+- < 2 second load time for typical webpages
+- Support up to 300 elements smoothly
+- Stable memory usage (no leaks)
 
-2. **Enhanced Image Display**:
+## Troubleshooting
 
-   - Better fallback displays that show the original image URL
-   - Improved placeholder graphics when images can't be loaded
-   - Proper handling of data URLs in the viewer
+### "No webpage data found" error
+- Make sure you clicked the extension icon while on an actual webpage (not chrome:// or about: pages)
+- Try refreshing the page and clicking the icon again
 
-3. **CORS Issue Resolution**:
-   - Images from external domains (like newspaper sites) now display correctly
-   - Maintains original image URLs for reference
+### Elements not appearing
+- Check the visibility controls panel - some element types may be hidden
+- Click "Select All" to show all element types
 
-This allows the 3DOM extension to properly display images from sites like the New York Times without being blocked by CORS policies.
+### Poor performance
+- Large webpages with many elements may cause slowdown
+- Try toggling off unused element types to improve performance
+- The extension automatically limits elements to ~300 for performance
 
-## Storage Quota and Performance Optimizations
+### Images not loading
+- Some images are blocked by CORS policies
+- The extension includes fallback mechanisms for external images
+- Check browser console for detailed error messages
 
-To handle large webpages with many elements and images:
+## Development
 
-1. **Message-based Data Transfer**: Switched from Chrome's storage API to direct message passing between background script and viewer
+### Prerequisites
+- Chrome browser (version 88+)
+- Basic knowledge of JavaScript and Three.js
+- Understanding of Chrome Extension Manifest V3
 
-   - Avoids the `QUOTA_BYTES` limit in Chrome storage
-   - Maintains the DOM data in memory rather than persisting it
+### Testing
+Run the extension on `demo.html` for a controlled test environment with various element types.
 
-2. **Data Optimization Pipeline**:
-
-   - Automatically reduces DOM data size for large pages
-   - Prioritizes important elements (images, articles, larger visible elements)
-   - Limits the total number of elements to improve performance
-   - Truncates excessively long text content
-   - Optimizes image data by reducing resolution and compression quality
-
-3. **Progressive Loading**:
-   - Implements fallback mechanisms when data exceeds maximum message size
-   - Falls back to showing fewer elements rather than failing entirely
-
-These optimizations ensure the extension can handle complex modern websites without hitting Chrome's built-in quota limitations.
-
-## User Experience Improvements
-
-To enhance user experience with the 3DOM extension:
-
-1. **Improved Loading Experience**:
-
-   - Added a stylish loading indicator with progress updates
-   - Shows the current step being executed during initialization
-   - Provides clear instructions on how to use the controls
-
-2. **Better Image Handling**:
-
-   - Enhanced image proxying system with multiple fallback mechanisms
-   - More reliable loading of external images with proper error handling
-   - Improved placeholders that display the original image URLs
-   - Support for both data URLs and blob URLs depending on browser capabilities
-
-3. **Improved Error Handling**:
-   - Clearer error messages when something goes wrong
-   - More graceful fallbacks instead of failing completely
-
-These improvements create a more polished user experience with fewer blank walls in the museum and clearer visual feedback during loading.
+### Building
+No build step required - load directly as unpacked extension in Chrome.
 
 ## License
 
 MIT License
+
+## Credits
+
+Developed with Claude Sonnet 4.5 as a demonstration of modern Chrome extension development with Three.js.
+
+## Version History
+
+### v2.0.0 (2026-02-13) - City View Redesign
+- Complete redesign from first-person museum to bird's-eye city view
+- Orthographic top-down camera with pan/zoom controls
+- Z-index-based element heights
+- Interactive element behaviors (pulse, glow, focus)
+- Visibility controls with 9 element type filters
+- Accessibility improvements (keyboard nav, ARIA, focus indicators)
+- Mobile responsive design
+- Performance optimizations (animation cleanup, memory management)
+
+### v1.0.0 - Museum View (Legacy)
+- First-person museum navigation
+- WASD + mouse controls
+- Exhibit-style element placement
+- Room-based layout system
