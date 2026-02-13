@@ -7,8 +7,8 @@
 const modules = [
   "/scripts/viewer/utils.js",
   "/scripts/viewer/images.js",
-  "/scripts/viewer/museum.js",
-  "/scripts/viewer/exhibits.js",
+  "/scripts/viewer/city.js",      // Changed from museum.js
+  "/scripts/viewer/elements.js",  // Changed from exhibits.js
   "/scripts/viewer/core.js",
 ];
 
