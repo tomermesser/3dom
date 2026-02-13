@@ -7,6 +7,16 @@
 let scene, camera, renderer;
 let domElements = [];
 
+// Track if scene is initialized
+let sceneInitialized = false;
+
+// Cache zoom display element
+let zoomDisplayElement = null;
+
+// Camera height constants
+const MIN_CAMERA_HEIGHT = 20;
+const MAX_CAMERA_HEIGHT = 200;
+
 // Initialize when DOM is loaded
 document.addEventListener("DOMContentLoaded", () => {
   console.log("3DOM Viewer: Initializing...");
@@ -110,6 +120,13 @@ function updateLoadingStatus(message, isError = false) {
 
 // Initialize the 3D scene
 function initScene() {
+  // Prevent re-initialization
+  if (sceneInitialized) {
+    console.warn('3DOM Core: Scene already initialized');
+    return;
+  }
+  sceneInitialized = true;
+
   // Create scene
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x1a1a1a); // Darker background for city view
@@ -191,8 +208,8 @@ function setupPanZoomControls() {
     const deltaX = event.clientX - previousMousePosition.x;
     const deltaY = event.clientY - previousMousePosition.y;
 
-    // Pan speed based on camera height
-    const panSpeed = 0.1;
+    // Pan speed based on camera height (zoom level)
+    const panSpeed = camera.position.y / 1000; // Adaptive to zoom
     cameraTarget.x -= deltaX * panSpeed;
     cameraTarget.z += deltaY * panSpeed;
 
@@ -220,7 +237,7 @@ function setupPanZoomControls() {
     const delta = event.deltaY > 0 ? zoomSpeed : -zoomSpeed;
 
     // Clamp camera height between min and max
-    const newHeight = Math.max(20, Math.min(200, camera.position.y + delta));
+    const newHeight = Math.max(MIN_CAMERA_HEIGHT, Math.min(MAX_CAMERA_HEIGHT, camera.position.y + delta));
     camera.position.y = newHeight;
 
     // Update zoom level display
@@ -234,25 +251,24 @@ function setupPanZoomControls() {
 
 // Update zoom level display
 function updateZoomDisplay(height) {
-  let zoomDisplay = document.getElementById('zoom-display');
-  if (!zoomDisplay) {
-    zoomDisplay = document.createElement('div');
-    zoomDisplay.id = 'zoom-display';
-    zoomDisplay.style.position = 'fixed';
-    zoomDisplay.style.bottom = '10px';
-    zoomDisplay.style.right = '10px';
-    zoomDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-    zoomDisplay.style.color = 'white';
-    zoomDisplay.style.padding = '5px 10px';
-    zoomDisplay.style.borderRadius = '5px';
-    zoomDisplay.style.fontFamily = 'Arial, sans-serif';
-    zoomDisplay.style.zIndex = '1000';
-    zoomDisplay.style.fontSize = '12px';
-    document.body.appendChild(zoomDisplay);
+  if (!zoomDisplayElement) {
+    zoomDisplayElement = document.createElement('div');
+    zoomDisplayElement.id = 'zoom-display';
+    zoomDisplayElement.style.position = 'fixed';
+    zoomDisplayElement.style.bottom = '10px';
+    zoomDisplayElement.style.right = '10px';
+    zoomDisplayElement.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+    zoomDisplayElement.style.color = 'white';
+    zoomDisplayElement.style.padding = '5px 10px';
+    zoomDisplayElement.style.borderRadius = '5px';
+    zoomDisplayElement.style.fontFamily = 'Arial, sans-serif';
+    zoomDisplayElement.style.zIndex = '1000';
+    zoomDisplayElement.style.fontSize = '12px';
+    document.body.appendChild(zoomDisplayElement);
   }
 
-  const zoomPercent = Math.round((200 - height) / 180 * 100);
-  zoomDisplay.textContent = `Zoom: ${zoomPercent}%`;
+  const zoomPercent = Math.round((MAX_CAMERA_HEIGHT - height) / (MAX_CAMERA_HEIGHT - MIN_CAMERA_HEIGHT) * 100);
+  zoomDisplayElement.textContent = `Zoom: ${zoomPercent}%`;
 }
 
 // Animation loop
