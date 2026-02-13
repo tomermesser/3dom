@@ -7,9 +7,8 @@ console.log("3DOM Viewer: Loading modular components...");
 
 // Check if modules have loaded
 if (
-  typeof createMuseumImage !== "function" ||
   typeof createTextTexture !== "function" ||
-  typeof createDOMElements !== "function" ||
+  typeof createCityElements !== "function" ||
   typeof initScene !== "function"
 ) {
   console.error(
@@ -20,8 +19,8 @@ if (
   const modules = [
     "scripts/viewer/utils.js",
     "scripts/viewer/images.js",
-    "scripts/viewer/museum.js",
-    "scripts/viewer/exhibits.js",
+    "scripts/viewer/city.js",
+    "scripts/viewer/elements.js",
     "scripts/viewer/core.js",
   ];
 
