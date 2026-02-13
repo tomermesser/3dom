@@ -21,9 +21,9 @@ let clickHandlerInitialized = false;
 let focusedInput = null;
 let visibilityControlsInitialized = false;
 
-// Camera height constants
-const MIN_CAMERA_HEIGHT = 20;
-const MAX_CAMERA_HEIGHT = 200;
+// Camera height constants (increased for larger scene)
+const MIN_CAMERA_HEIGHT = 50;
+const MAX_CAMERA_HEIGHT = 800;
 
 // Hover effect constants
 const HOVER_OPACITY_INCREASE = 0.2;
@@ -110,8 +110,8 @@ function processReceivedData(domData) {
   // Set up animation
   animate();
 
-  // Display zoom level
-  updateZoomDisplay(camera.position.y);
+  // Display zoom level (use initial camera height)
+  updateZoomDisplay(400);
 
   // Add website info panel
   addWebsiteInfoPanel(domData);
@@ -157,7 +157,7 @@ function initScene() {
 
   // Calculate camera bounds based on typical webpage
   const aspect = window.innerWidth / window.innerHeight;
-  const viewSize = 100; // Adjust this to control zoom level
+  const viewSize = 400; // Increased to show more of the larger scene
 
   // Create orthographic camera for top-down view
   camera = new THREE.OrthographicCamera(
@@ -166,11 +166,11 @@ function initScene() {
     viewSize,           // top
     -viewSize,          // bottom
     0.1,                // near
-    1000                // far
+    2000                // far (increased for taller elements)
   );
 
-  // Position camera directly above the scene
-  camera.position.set(0, 100, 0);
+  // Position camera directly above the scene (higher up for larger scene)
+  camera.position.set(0, 400, 0);
   camera.lookAt(0, 0, 0);
   camera.up.set(0, 0, -1); // Set up vector for top-down view
 

@@ -12,9 +12,11 @@ function createGroundPlane(pageMetrics) {
 
   const { width, height } = pageMetrics;
 
-  // Scale to reasonable 3D space (make it fit nicely in view)
-  const scaleX = 200 / Math.max(width, 1);
-  const scaleZ = 200 / Math.max(height, 1);
+  // Scale to reasonable 3D space (use larger target for wide pages)
+  // Target size increased to 800 units to better handle wide modern websites
+  const targetSize = 800;
+  const scaleX = targetSize / Math.max(width, 1);
+  const scaleZ = targetSize / Math.max(height, 1);
   const scale = Math.min(scaleX, scaleZ);
 
   const groundWidth = width * scale;
