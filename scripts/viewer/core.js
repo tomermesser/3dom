@@ -246,6 +246,8 @@ function setupPanZoomControls() {
   // Mouse up - stop dragging
   window.addEventListener('mouseup', () => {
     isDragging = false;
+    // Reset drag flag so subsequent clicks work
+    hasDragged = false;
   });
 
   // Make hasDragged accessible to click handler
