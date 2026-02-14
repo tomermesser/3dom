@@ -107,6 +107,32 @@ function processReceivedData(domData) {
 
   updateLoadingStatus("Setting up controls...");
 
+  // Position camera based on user's scroll position
+  if (domData.pageMetrics && window.cityData) {
+    const scrollX = domData.pageMetrics.scrollX || 0;
+    const scrollY = domData.pageMetrics.scrollY || 0;
+    const scale = window.cityData.scale;
+
+    // Convert scroll position to 3D coordinates
+    const pageWidth = domData.pageMetrics.width;
+    const pageHeight = domData.pageMetrics.height;
+
+    // Calculate center of viewport in page coordinates
+    const viewportCenterX = scrollX + (window.innerWidth / 2);
+    const viewportCenterY = scrollY + (window.innerHeight / 2);
+
+    // Convert to 3D scene coordinates
+    const sceneCenterX = (viewportCenterX * scale) - (pageWidth * scale) / 2;
+    const sceneCenterZ = (viewportCenterY * scale) - (pageHeight * scale) / 2;
+
+    // Position camera above this point, maintaining the angled perspective
+    const cameraOffset = 600; // Distance from center
+    camera.position.set(sceneCenterX + cameraOffset, 500, sceneCenterZ + cameraOffset);
+    camera.lookAt(sceneCenterX, 0, sceneCenterZ);
+
+    console.log('3DOM Core: Positioned camera at scroll position:', {scrollX, scrollY, sceneCenterX, sceneCenterZ});
+  }
+
   // Set up animation
   animate();
 
@@ -222,6 +248,9 @@ function initScene() {
   // Create pan/zoom controls
   setupPanZoomControls();
 
+  // Setup keyboard controls for WASD movement
+  setupKeyboardControls();
+
   // Setup click handler after controls
   setupClickHandler();
 }
@@ -300,6 +329,73 @@ function setupPanZoomControls() {
   cameraTarget.z = camera.position.z;
 }
 
+// Set up keyboard controls for WASD movement
+function setupKeyboardControls() {
+  const keysPressed = {};
+  const moveSpeed = 10; // Units per frame
+
+  // Track which keys are pressed
+  document.addEventListener('keydown', (event) => {
+    // Don't capture keyboard if user is typing in input field
+    if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+      return;
+    }
+
+    const key = event.key.toLowerCase();
+    if (['w', 'a', 's', 'd', ' ', 'shift'].includes(key)) {
+      event.preventDefault();
+      keysPressed[key] = true;
+    }
+  });
+
+  document.addEventListener('keyup', (event) => {
+    const key = event.key.toLowerCase();
+    if (['w', 'a', 's', 'd', ' ', 'shift'].includes(key)) {
+      keysPressed[key] = false;
+    }
+  });
+
+  // Apply movement in animation loop
+  function applyKeyboardMovement() {
+    // Get camera's forward and right vectors
+    const forward = new THREE.Vector3();
+    const right = new THREE.Vector3();
+
+    // For perspective camera, get actual forward direction
+    camera.getWorldDirection(forward);
+    forward.y = 0; // Keep movement on horizontal plane
+    forward.normalize();
+
+    // Right is perpendicular to forward
+    right.crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
+
+    // Apply WASD movement
+    if (keysPressed['w']) {
+      camera.position.add(forward.multiplyScalar(moveSpeed));
+    }
+    if (keysPressed['s']) {
+      camera.position.add(forward.multiplyScalar(-moveSpeed));
+    }
+    if (keysPressed['a']) {
+      camera.position.add(right.multiplyScalar(-moveSpeed));
+    }
+    if (keysPressed['d']) {
+      camera.position.add(right.multiplyScalar(moveSpeed));
+    }
+
+    // Space to fly up, Shift to fly down
+    if (keysPressed[' ']) {
+      camera.position.y = Math.min(camera.position.y + moveSpeed, MAX_CAMERA_HEIGHT);
+    }
+    if (keysPressed['shift']) {
+      camera.position.y = Math.max(camera.position.y - moveSpeed, MIN_CAMERA_HEIGHT);
+    }
+  }
+
+  // Store the function globally so animation loop can call it
+  window.applyKeyboardMovement = applyKeyboardMovement;
+}
+
 // Update zoom level display
 function updateZoomDisplay(height) {
   if (!zoomDisplayElement) {
@@ -325,6 +421,12 @@ function updateZoomDisplay(height) {
 // Animation loop
 function animate() {
   requestAnimationFrame(animate);
+
+  // Apply keyboard movement if function is available
+  if (window.applyKeyboardMovement) {
+    window.applyKeyboardMovement();
+  }
+
   renderer.render(scene, camera);
 }
 
@@ -742,6 +844,13 @@ function setupVisibilityControls(retryCount = 0) {
 
   visibilityControlsInitialized = true;
   console.log('3DOM Core: Visibility controls initialized');
+
+  // Hide text and other elements by default (since their checkboxes are unchecked)
+  // This needs to run after controls are initialized
+  setTimeout(() => {
+    updateElementVisibility('toggle-text', false, controlMap['toggle-text']);
+    updateElementVisibility('toggle-other', false, controlMap['toggle-other']);
+  }, 100);
 }
 
 function updateElementVisibility(controlId, visible, filterFunction) {

@@ -30,6 +30,8 @@ function scanDOM() {
       height: document.documentElement.scrollHeight,
       title: document.title,
       url: window.location.href,
+      scrollX: window.scrollX,
+      scrollY: window.scrollY,
     },
   };
 
