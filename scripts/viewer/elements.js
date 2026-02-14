@@ -81,21 +81,26 @@ function createElementShape(element, scale, pageMetrics) {
 
   const mesh = new THREE.Mesh(geometry, material);
 
+  // Enable shadows for 3D depth perception
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+
   // Position the element
   const centerX = (element.position.x + element.dimensions.width / 2) * scale - (pageMetrics.width * scale) / 2;
   const centerZ = (element.position.y + element.dimensions.height / 2) * scale - (pageMetrics.height * scale) / 2;
 
   mesh.position.set(centerX, height / 2, centerZ);
 
-  // Add text texture if element has text content
-  if (element.textContent && element.textContent.length > 0) {
-    const textMesh = createTextTexture(element.textContent, width, depth);
-    if (textMesh) {
-      textMesh.rotation.x = -Math.PI / 2; // Rotate to face up
-      textMesh.position.y = height / 2 + 0.01; // Slightly above top face
-      mesh.add(textMesh);
-    }
-  }
+  // Text textures disabled - they overlay and block the view
+  // TODO: Re-enable with better sizing/positioning in future
+  // if (element.textContent && element.textContent.length > 0) {
+  //   const textMesh = createTextTexture(element.textContent, width, depth);
+  //   if (textMesh) {
+  //     textMesh.rotation.x = -Math.PI / 2;
+  //     textMesh.position.y = height / 2 + 0.01;
+  //     mesh.add(textMesh);
+  //   }
+  // }
 
   // Store element data for interactions
   mesh.userData = {

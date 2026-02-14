@@ -32,7 +32,7 @@ function createGroundPlane(pageMetrics) {
   const ground = new THREE.Mesh(groundGeometry, groundMaterial);
   ground.rotation.x = -Math.PI / 2; // Rotate to be horizontal
   ground.position.y = 0;
-  ground.receiveShadow = false; // Disabled for performance
+  ground.receiveShadow = true; // Enable to receive shadows from elements
 
   return { ground, scale };
 }

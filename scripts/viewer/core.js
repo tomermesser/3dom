@@ -159,24 +159,18 @@ function initScene() {
   scene.background = new THREE.Color(0x1a1a1a); // Darker background for city view
   scene.fog = null; // Remove fog for top-down view
 
-  // Calculate camera bounds based on typical webpage
+  // Create perspective camera for 3D view with depth perception
   const aspect = window.innerWidth / window.innerHeight;
-  const viewSize = 400; // Increased to show more of the larger scene
-
-  // Create orthographic camera for top-down view
-  camera = new THREE.OrthographicCamera(
-    -viewSize * aspect, // left
-    viewSize * aspect,  // right
-    viewSize,           // top
-    -viewSize,          // bottom
-    0.1,                // near
-    2000                // far (increased for taller elements)
+  camera = new THREE.PerspectiveCamera(
+    60,     // Field of view
+    aspect, // Aspect ratio
+    0.1,    // Near plane
+    5000    // Far plane
   );
 
-  // Position camera directly above the scene (higher up for larger scene)
-  camera.position.set(0, 400, 0);
+  // Position camera at an angle for better 3D perspective
+  camera.position.set(600, 500, 600); // Angled view from corner
   camera.lookAt(0, 0, 0);
-  camera.up.set(0, 0, -1); // Set up vector for top-down view
 
   // Create renderer with optimized settings
   renderer = new THREE.WebGLRenderer({
@@ -186,24 +180,38 @@ function initScene() {
   });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-  renderer.shadowMap.enabled = false; // Disabled for performance
+  renderer.shadowMap.enabled = true; // Enable shadows for 3D depth
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   document.getElementById('viewer-container').appendChild(renderer.domElement);
 
-  // Add lighting for top-down view
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+  // Enhanced lighting for 3D perspective with shadows
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); // Reduced for better shadows
   scene.add(ambientLight);
 
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
-  directionalLight.position.set(0, 100, 0);
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  directionalLight.position.set(500, 1000, 500); // Angled from above
+  directionalLight.castShadow = true;
+
+  // Shadow camera settings for better quality
+  directionalLight.shadow.camera.left = -1000;
+  directionalLight.shadow.camera.right = 1000;
+  directionalLight.shadow.camera.top = 1000;
+  directionalLight.shadow.camera.bottom = -1000;
+  directionalLight.shadow.camera.near = 0.1;
+  directionalLight.shadow.camera.far = 3000;
+  directionalLight.shadow.mapSize.width = 2048;
+  directionalLight.shadow.mapSize.height = 2048;
+
   scene.add(directionalLight);
+
+  // Add a second fill light for better illumination
+  const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
+  fillLight.position.set(-500, 800, -500);
+  scene.add(fillLight);
 
   // Handle window resize
   window.addEventListener('resize', () => {
-    const aspect = window.innerWidth / window.innerHeight;
-    camera.left = -viewSize * aspect;
-    camera.right = viewSize * aspect;
-    camera.top = viewSize;
-    camera.bottom = -viewSize;
+    camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
