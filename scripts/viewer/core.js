@@ -22,8 +22,8 @@ let focusedInput = null;
 let visibilityControlsInitialized = false;
 
 // Camera height constants (increased for larger scene)
-const MIN_CAMERA_HEIGHT = 50;
-const MAX_CAMERA_HEIGHT = 800;
+const MIN_CAMERA_HEIGHT = 25;
+const MAX_CAMERA_HEIGHT = 1000;
 
 // Hover effect constants
 const HOVER_OPACITY_INCREASE = 0.2;
@@ -46,7 +46,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const isLoading = urlParams.get("loading") === "true";
 
   // Set up listener for messages from background script
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message.action === "domDataReady" && message.data) {
       console.log("3DOM Viewer: DOM data received directly");
       updateLoadingStatus("Processing DOM data...");
@@ -125,12 +125,12 @@ function processReceivedData(domData) {
     const sceneCenterX = (viewportCenterX * scale) - (pageWidth * scale) / 2;
     const sceneCenterZ = (viewportCenterY * scale) - (pageHeight * scale) / 2;
 
-    // Position camera above this point, maintaining the angled perspective
-    const cameraOffset = 600; // Distance from center
-    camera.position.set(sceneCenterX + cameraOffset, 500, sceneCenterZ + cameraOffset);
+    // Position camera directly above the scroll position for top-down view
+    const cameraHeight = 400; // Height above the scene
+    camera.position.set(sceneCenterX, cameraHeight, sceneCenterZ);
     camera.lookAt(sceneCenterX, 0, sceneCenterZ);
 
-    console.log('3DOM Core: Positioned camera at scroll position:', {scrollX, scrollY, sceneCenterX, sceneCenterZ});
+    console.log('3DOM Core: Positioned camera at scroll position:', {scrollX, scrollY, sceneCenterX, sceneCenterZ, cameraHeight});
   }
 
   // Set up animation
@@ -588,7 +588,7 @@ function handleInputClick(element) {
 }
 
 // Handle select click
-function handleSelectClick(element, domElement) {
+function handleSelectClick(_element, domElement) {
   console.log('3DOM Core: Select clicked');
   // Placeholder for future floating bridge implementation
   // For now, just log the options
